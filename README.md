@@ -6,7 +6,7 @@
 
 **Version:** (e.g., v1.0.0)
 **Go Version Required:** 1.21+ (primarily for `slog`)
-**Repository:** `github.com/your-username/blitzkit-go` (Replace with actual path)
+**Repository:** `github.com/remi-viau/blitzkit-go`
 
 ## 1. Overview
 
