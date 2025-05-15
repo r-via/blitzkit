@@ -1,4 +1,4 @@
-module gitlab.com/remi.viau/go-packages/webserver
+module github.com/r-via/blitzkit-go
 
 go 1.23.5
 
