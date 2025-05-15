@@ -1,114 +1,70 @@
-# Package `webserver` - Fondation pour Serveur Web Go Haute Performance
+# BlitzKit-Go: High-Performance Go Web Framework Foundation
 
-**Version:**
-**Go Version Requise:** 1.21+ (principalement pour `slog`)
+<p align="center">
+<img src="assets/imgs/logo.jpg" alt="Logo">
+</p>
+
+**Version:** (e.g., v1.0.0)
+**Go Version Required:** 1.21+ (primarily for `slog`)
+**Repository:** `github.com/your-username/blitzkit-go` (Replace with actual path)
 
 ## 1. Overview
 
-Le package `webserver` fournit une base solide et performante pour la création d'applications web en Go. Il s'appuie sur le framework **Fiber v2** et intègre des fonctionnalités essentielles telles qu'un système de cache à deux niveaux (mémoire et disque via BadgerDB), le traitement des assets statiques, la journalisation structurée avec `slog`, et le monitoring via Prometheus.
+**BlitzKit-Go** is a high-performance, reusable toolkit for building modern web applications in Go. Leveraging the speed and efficiency of the **Fiber v2** web framework, BlitzKit-Go provides a solid foundation by integrating essential features such as an intelligent L1/L2 caching system (in-memory & BadgerDB), optimized static asset processing, structured `slog` logging, and Prometheus monitoring capabilities.
 
-Conçu pour être réutilisable, il prend en charge la configuration de base du serveur, la gestion des erreurs, et offre des mécanismes pour le rendu de pages (notamment avec des templates comme Templ, bien que non directement imposé) et de données brutes avec mise en cache.
+Designed to be configurable yet "batteries-included" for core infrastructure, BlitzKit-Go handles common web server complexities, allowing developers to focus on business logic and application-specific routing.
 
-**Fonctionnalités Clés (Basées sur le Code Actuel):**
+**Key Features:**
 
-*   **Framework Fiber v2**: Utilisation directe de Fiber pour la performance et une API familière.
-*   **Cache Hybride L1/L2**:
-    *   **L1 (Mémoire)**: `patrickmn/go-cache` pour un accès ultra-rapide.
-    *   **L2 (Disque)**: `dgraph-io/badger/v4` pour la persistance, avec gestion du cycle de vie (GC).
-    *   Méthodes `RenderPage` et `RenderBytesPage` pour servir du contenu via le cache.
-*   **Invalidation Manuelle du Cache**: Méthodes `Invalidate(key)` et `Flush()` pour supprimer des clés spécifiques ou vider l'intégralité du cache L1/L2 programmatiquement.
-*   **Préchauffage du Cache (Warmup)**:
-    *   `RegisterForPageWarmup` et `RegisterForBytesWarmup` pour enregistrer des générateurs.
-    *   `ExecuteWarmup` pour pré-remplir le cache au démarrage.
-*   **Traitement des Assets Statiques (`StaticProcessor`)**:
-    *   Minification CSS/JS (depuis `SourcesDir`) et copie de fichiers (depuis `StaticsDir`) vers `PublicDir` au démarrage.
-    *   Utilise `tdewolff/minify/v2`.
-    *   Priorise `.debug.js` en mode développement.
-*   **Observabilité (Monitoring)**:
-    *   Métriques **Prometheus** via `/metrics` (activable via `Config.EnableMetrics`).
-    *   Endpoint de Health Check `GET /health` (vérifie L2 si configuré).
-*   **Logging Structuré avec `slog`**: Logger `slog` configurable, avec middleware de journalisation des requêtes.
-*   **Gestion des Erreurs Centralisée**: Un `ErrorHandler` par défaut pour Fiber qui logue les erreurs et retourne des réponses appropriées (HTML via `ErrorComponentGenerator` ou JSON).
-*   **Configuration Flexible**: Via la struct `Config` et certaines variables d'environnement.
-*   **Validation au Démarrage**: Vérification des chemins et permissions pour les répertoires critiques.
-*   **Utilitaires**: Fonctions pour la génération de sitemap XML (`GenerateSitemapXMLBytes`), l'extraction d'IP, la gestion des valeurs par défaut, etc.
-
----
-
-## 2. Introduction
-
-### 2.1 Objectif du Document
-Ce README sert de guide de référence pour les développeurs utilisant le package `webserver`. Il détaille l'architecture, la configuration, l'API publique, et les mécanismes internes.
-
-### 2.2 Contexte d'Utilisation
-Idéal pour les applications web Go nécessitant :
-*   Haute performance avec Fiber.
-*   Rendu côté serveur avec un système de cache robuste.
-*   Gestion des assets statiques.
-*   Logging structuré et monitoring.
-
-### 2.3 Philosophie
-*   **Fondation Solide**: Fournir les briques essentielles pour un serveur web moderne.
-*   **Configuration Explicite**: Une struct `Config` claire, avec des surcharges via variables d'environnement.
-*   **Proche de Fiber**: Encourager l'utilisation directe de Fiber pour le routage et la gestion des requêtes, tout en fournissant des composants d'infrastructure (cache, statics).
-
-### 2.4 Technologies et Dépendances Principales
-*   **Go** (1.21+ recommandé).
-*   **Fiber v2** (`github.com/gofiber/fiber/v2`).
-*   **Templ** (`github.com/a-h/templ`): Supporté pour le rendu, mais l'intégration se fait via l'interface `templ.Component` passée aux générateurs.
-*   **go-cache** (`github.com/patrickmn/go-cache`): Cache L1.
-*   **BadgerDB v4** (`github.com/dgraph-io/badger/v4`): Cache L2.
-*   **minify v2** (`github.com/tdewolff/minify/v2`): Minification CSS/JS.
-*   **slog** (`log/slog`): Logging.
-*   **Prometheus Client** (`github.com/prometheus/client_golang`).
-*   **Fiber Prometheus Middleware** (`github.com/ansrivas/fiberprometheus/v2`).
+*   **Fiber v2 Core:** Built on the fast and Express.js-inspired Fiber v2 framework.
+*   **Hybrid L1/L2 Caching:**
+    *   **L1 Cache (In-Memory):** `patrickmn/go-cache` for ultra-fast access to frequently used data.
+    *   **L2 Cache (Disk-Persistent):** `dgraph-io/badger/v4` for persistent caching, complete with background garbage collection (GC).
+    *   **Cache-Aware Rendering:** `RenderPage` (for `templ.Component` or similar) and `RenderBytesPage` (for raw byte content like XML, JSON) methods to serve content through the cache.
+*   **Programmatic Cache Control:**
+    *   `Invalidate(key string)`: Remove specific keys from L1 and L2 caches.
+    *   `Flush()`: Clear all data from both L1 and L2 caches (destructive).
+*   **Cache Warmup:**
+    *   `RegisterForPageWarmup` and `RegisterForBytesWarmup` to register content generator functions.
+    *   `ExecuteWarmup` to pre-populate L1/L2 caches on application startup, running concurrently.
+*   **Static Asset Pipeline (`StaticProcessor`):**
+    *   Automated CSS/JS minification (from `SourcesDir`) and static file copying (from `StaticsDir`) to a `PublicDir` during server initialization.
+    *   Powered by `tdewolff/minify/v2`.
+    *   Prioritizes `.debug.js` files in development mode for easier debugging.
+*   **Integrated Observability:**
+    *   **Prometheus Metrics:** Exposes detailed metrics via `/metrics` if `Config.EnableMetrics` is true (uses `ansrivas/fiberprometheus/v2`). Tracks Fiber requests, cache performance (hits, misses, sets, errors), warmup statistics, and page generation durations.
+    *   **Health Check Endpoint:** `GET /health` endpoint to verify server status and L2 cache (BadgerDB) readability.
+*   **Structured Logging with `slog`:**
+    *   Uses Go's standard `log/slog` for all internal logging.
+    *   Allows injection of a custom `slog.Logger` via `Config.Logger`.
+    *   Includes a detailed, structured request logging middleware.
+*   **Centralized Error Handling:**
+    *   A default Fiber `ErrorHandler` that logs errors and returns appropriate responses (HTML via `Config.ErrorComponentGenerator` or JSON based on `Accept` header).
+*   **Flexible Configuration:**
+    *   Comprehensive `Config` struct for fine-grained control.
+    *   Overrides for key settings via standard environment variables (e.g., `PORT`, `CACHE_L1_DEFAULT_TTL`).
+*   **Startup Validation:** Rigorous checks for critical directory paths and permissions.
+*   **Utilities:** Helper functions for sitemap XML generation (`GenerateSitemapXMLBytes`), client IP extraction, default value handling, and more.
 
 ---
 
-## 3. Concepts Fondamentaux
+## 2. Getting Started
 
-### 3.1 Handlers Fiber Standards
-Le package `webserver` s'attend à ce que vous utilisiez des handlers Fiber standards, typiquement de la forme `func(c *fiber.Ctx) error`.
+### 2.1 Prerequisites
+*   Go 1.21 or newer installed.
+*   A Go project initialized (`go mod init yourproject`).
+*   (Optional) Templ CLI installed if you are using Templ for HTML generation: `go install github.com/a-h/templ/cmd/templ@latest`.
 
-### 3.2 Fonctions Génératrices (Generator Functions)
-Pour le rendu avec cache (`RenderPage`, `RenderBytesPage`) et le préchauffage (`ExecuteWarmup`), le package utilise des fonctions génératrices :
-*   **`PageGeneratorFunc`**: `func() (page templ.Component, lastModified int64, err error)`
-    *   Retourne un `templ.Component` (ou tout autre objet implémentant `templ.Component`).
-    *   `lastModified`: Timestamp Unix de la dernière modification des données sources.
-    *   `err`: Erreur de génération.
-*   **`BytesGeneratorFunc`**: `func() (data []byte, lastModified int64, err error)`
-    *   Similaire, mais retourne des `[]byte` (ex: XML, JSON).
-
-Ces fonctions sont appelées par le système de cache en cas de "miss" ou d'expiration.
-
-### 3.3 Cache L1/L2 et `CacheTTLInfo`
-*   **L1 (Mémoire)**: Rapide, pour les accès fréquents. TTL contrôlé par `Config.CacheL1DefaultTTL` ou `cache.NoExpiration` si `CacheTTLInfo.IsInfinite` est `true`.
-*   **L2 (Disque - BadgerDB)**: Persistant. TTL contrôlé par `Config.CacheL2DefaultTTL` ou persistant si `CacheTTLInfo.IsInfinite` est `true`.
-*   **`CacheTTLInfo{IsInfinite: bool}`**: Utilisé dans `RenderPage`/`RenderBytesPage` et lors de l'enregistrement pour le warmup pour indiquer si l'élément doit avoir une durée de vie "infinie" (pas de TTL basé sur le temps). Si `false`, les TTLs par défaut de la configuration sont appliqués.
-
-### 3.4 Traitement des Assets Statiques
-Le `StaticProcessor` est exécuté une fois au démarrage du serveur (`NewServer`):
-1.  Il purge (supprime et recrée) le `Config.PublicDir`.
-2.  Les fichiers CSS/JS de `Config.SourcesDir` sont minifiés et écrits dans `PublicDir`. Les fichiers `.debug.js` sont priorisés si `Config.DevMode` est `true`.
-3.  Les fichiers de `Config.StaticsDir` (images, fonts, etc.) sont copiés tels quels dans `PublicDir`.
-L'application est ensuite responsable de servir les fichiers depuis `Config.PublicDir` en utilisant `app.Static("/", cfg.PublicDir)`.
-
----
-
-## 4. Démarrage Rapide
-
-### 4.1 Prérequis
-*   Go 1.21+ installé.
-*   Un projet Go initialisé (`go mod init monprojet`).
-*   Templ installé si vous l'utilisez (`go install github.com/a-h/templ/cmd/templ@latest`).
-
-### 4.2 Installation du Package
+### 2.2 Installation
+Install BlitzKit-Go into your project:
 ```bash
-go get github.com/chemin/vers/votre/webserver # Assurez-vous que le chemin est correct
+go get github.com/your-username/blitzkit-go # Replace with the actual import path
 go mod tidy
 ```
 
-### 4.3 Exemple Minimal `main.go`
+### 2.3 Minimal `main.go` Example
+
+This example demonstrates basic server setup, a cached HTML page, a cached XML sitemap, static file serving, and graceful shutdown.
 
 ```go
 package main
@@ -116,151 +72,197 @@ package main
 import (
 	"fmt"
 	"log/slog"
-	"monprojet/views" // Supposons un package 'views' généré par Templ
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	// Assuming you have a 'views' package generated by Templ (or similar)
+	"yourproject/views" // Replace with your actual views package path
+
 	"github.com/a-h/templ"
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/csrf"
-	"github.com/gofiber/fiber/v2/middleware/limiter"
-	// Remplacez par le chemin réel de votre package webserver
-	"monprojet/vendor/github.com/FlashSight/go-packages/webserver" // Ou le chemin correct
+	"github.com/gofiber/fiber/v2/middleware/csrf"    // For CSRF protection
+	"github.com/gofiber/fiber/v2/middleware/limiter" // For Rate Limiting
+
+	// Replace with the actual import path for BlitzKit-Go
+	"github.com/your-username/blitzkit-go/webserver"
 )
 
-// Handler pour la page d'accueil utilisant RenderPage (avec cache)
+// --- Page Generators ---
+
+// HomePageGenerator creates the home page component.
+func HomePageGenerator(server *webserver.Server, title string) webserver.PageGeneratorFunc {
+	return func() (templ.Component, int64, error) {
+		server.GetLogger().Info("Generating component for home page", "title", title)
+		// In a real app, you might fetch data here.
+		// For Templ, ensure views.HomePage exists and takes a string.
+		return views.HomePage(title), time.Now().Unix(), nil
+	}
+}
+
+// SitemapGenerator creates the sitemap.xml content.
+func SitemapGenerator(server *webserver.Server) webserver.BytesGeneratorFunc {
+	return func() ([]byte, int64, error) {
+		server.GetLogger().Info("Generating sitemap.xml")
+		now := time.Now()
+		entries := []webserver.SitemapEntry{
+			{URL: "https://example.com/", LastMod: &now, ChangeFreq: webserver.SitemapChangeFreqDaily, Priority: 1.0},
+			{URL: "https://example.com/about", LastMod: &now, ChangeFreq: webserver.SitemapChangeFreqMonthly, Priority: 0.8},
+			// Add more entries dynamically based on your content
+		}
+		xmlBytes, err := webserver.GenerateSitemapXMLBytes(entries)
+		return xmlBytes, now.Unix(), err
+	}
+}
+
+// ErrorPageGenerator creates a custom error page component.
+func CustomErrorComponentGenerator(isDevMode bool) webserver.ErrorComponentGenerator {
+	return func(err error, code int, isDev bool) templ.Component {
+		errMsg := "An unexpected error occurred."
+		if fe, ok := err.(*fiber.Error); ok {
+			errMsg = fe.Message
+		} else if isDevMode { // Only show detailed error in dev mode
+			errMsg = err.Error()
+		}
+
+		if !isDevMode && code >= 500 {
+			errMsg = "Internal Server Error. Please try again later."
+		}
+		// Ensure views.ErrorPage exists and takes these parameters.
+		return views.ErrorPage(fmt.Sprintf("Error %d", code), errMsg, isDev)
+	}
+}
+
+// --- HTTP Handlers (using Fiber's standard signature) ---
+
+// homeHandler serves the home page using BlitzKit-Go's cached rendering.
 func homeHandler(server *webserver.Server) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		cacheKey := "home"
-		return server.RenderPage(c, cacheKey, webserver.CacheTTLInfo{IsInfinite: false}, func() (templ.Component, int64, error) {
-			server.GetLogger().Info("Génération du composant pour la page d'accueil", "cache_key", cacheKey)
-			return views.HomePage("Bienvenue !"), time.Now().Unix(), nil
-		})
+		// Use a default TTL from config (IsInfinite: false)
+		return server.RenderPage(c, cacheKey, webserver.CacheTTLInfo{IsInfinite: false},
+			HomePageGenerator(server, "Welcome to BlitzKit-Go!"))
 	}
 }
 
-// Handler pour un sitemap utilisant RenderBytesPage (avec cache)
+// sitemapHandler serves the sitemap.xml using BlitzKit-Go's cached byte rendering.
 func sitemapHandler(server *webserver.Server) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		cacheKey := "sitemap.xml"
-		contentType := "application/xml; charset=utf-8"
-		return server.RenderBytesPage(c, cacheKey, contentType, webserver.CacheTTLInfo{IsInfinite: true}, func() ([]byte, int64, error) {
-			server.GetLogger().Info("Génération du sitemap.xml", "cache_key", cacheKey)
-			now := time.Now()
-			entries := []webserver.SitemapEntry{
-				{URL: "https://example.com/", LastMod: &now, ChangeFreq: webserver.SitemapChangeFreqDaily, Priority: 1.0},
-				{URL: "https://example.com/about", LastMod: &now, ChangeFreq: webserver.SitemapChangeFreqMonthly, Priority: 0.8},
-			}
-			xmlBytes, err := webserver.GenerateSitemapXMLBytes(entries)
-			return xmlBytes, now.Unix(), err
-		})
+		contentType := fiber.MIMEApplicationXMLCharsetUTF8 // Use Fiber's constants
+		// Sitemap changes infrequently, good candidate for effectively infinite cache
+		return server.RenderBytesPage(c, cacheKey, contentType, webserver.CacheTTLInfo{IsInfinite: true},
+			SitemapGenerator(server))
 	}
 }
 
-// Handler pour invalider une clé de cache (exemple)
-func invalidateCacheHandler(server *webserver.Server) fiber.Handler {
-    return func(c *fiber.Ctx) error {
-        keyToInvalidate := c.Query("key")
-        if keyToInvalidate == "" {
-            return c.Status(fiber.StatusBadRequest).SendString("Paramètre 'key' manquant")
-        }
-        if err := server.Invalidate(keyToInvalidate); err != nil {
-            server.GetLogger().Error("Échec de l'invalidation du cache", "key", keyToInvalidate, "error", err)
-            return c.Status(fiber.StatusInternalServerError).SendString("Échec de l'invalidation du cache")
-        }
-        server.GetLogger().Info("Cache invalidé pour la clé", "key", keyToInvalidate)
-        return c.SendString(fmt.Sprintf("Cache invalidé pour la clé: %s", keyToInvalidate))
-    }
+// adminInvalidateCacheHandler (example for programmatic cache invalidation)
+// IMPORTANT: This endpoint MUST be secured in a real application (e.g., auth middleware).
+func adminInvalidateCacheHandler(server *webserver.Server) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		keyToInvalidate := c.Query("key")
+		if keyToInvalidate == "" {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Missing 'key' query parameter"})
+		}
+
+		if err := server.Invalidate(keyToInvalidate); err != nil {
+			server.GetLogger().Error("Failed to invalidate cache", "key", keyToInvalidate, "error", err)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Cache invalidation failed"})
+		}
+		server.GetLogger().Info("Cache invalidated successfully", "key", keyToInvalidate)
+		return c.JSON(fiber.Map{"message": fmt.Sprintf("Cache key '%s' invalidated", keyToInvalidate)})
+	}
 }
 
-
-// Handler pour une page 404 personnalisée
+// notFoundHandler serves a custom 404 page.
 func notFoundHandler(server *webserver.Server) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		if server.GetConfig().ErrorComponentGenerator != nil && !webserver.WantsJSON(c) {
-			errorPage := server.GetConfig().ErrorComponentGenerator(fiber.ErrNotFound, fiber.StatusNotFound, server.GetConfig().DevMode)
-			if errorPage != nil {
-				c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
-				return errorPage.Render(c.Context(), c.Response().BodyWriter())
-			}
-		}
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Page non trouvée"})
+		// The default ErrorHandler in BlitzKit-Go will try to use ErrorComponentGenerator
+		// if the error is a fiber.Error with status 404.
+		// So, we just need to return the fiber.ErrNotFound.
+		return fiber.ErrNotFound // This will be caught by server.handleError
 	}
 }
 
 func main() {
 	// --- 1. Logger Setup ---
-	logLevel := slog.LevelInfo
 	isDev := os.Getenv("APP_ENV") == "development"
+	logLevel := slog.LevelInfo
 	if isDev {
 		logLevel = slog.LevelDebug
 	}
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
 		Level:     logLevel,
-		AddSource: isDev,
+		AddSource: isDev, // Adds source file:line in dev logs
 	}))
-	slog.SetDefault(logger)
+	slog.SetDefault(logger) // Optional: set as global default logger
 
 	// --- 2. Configuration ---
 	cfg := webserver.Config{
 		Port:              webserver.GetEnvOrDefault(logger, "PORT", "", "8080"),
 		DevMode:           isDev,
-		Logger:            logger,
-		SourcesDir:        "./webroot/sources",
-		StaticsDir:        "./webroot/statics",
-		PublicDir:         "./webroot/public", 
-		CacheDir:          "./runtime/cache",  
+		Logger:            logger, // Inject our configured logger
+		SourcesDir:        "./webroot/sources",   // CSS/JS source files for minification
+		StaticsDir:        "./webroot/statics",   // Static assets like images, fonts
+		PublicDir:         "./webroot/public",    // Output directory for processed & served assets
+		CacheDir:          "./runtime/cache",     // Directory for L2 BadgerDB cache
 		ReadTimeout:       30 * time.Second,
 		WriteTimeout:      30 * time.Second,
 		IdleTimeout:       60 * time.Second,
-		EnableMetrics:     true,
-		CacheL1DefaultTTL: 5 * time.Minute,
+		EnableMetrics:     true, // Enable /metrics endpoint
+		CacheL1DefaultTTL: 10 * time.Minute,
 		CacheL2DefaultTTL: 24 * time.Hour,
-		WarmupConcurrency: 4,
-		SecurityHeaders: map[string]string{
-			"X-Frame-Options": "DENY",
+		BadgerGCInterval:  1 * time.Hour,
+		WarmupConcurrency: 4,      // Max goroutines for cache warmup
+		SecurityHeaders: map[string]string{ // Basic security headers
+			"X-Frame-Options":           "DENY",
+			"X-Content-Type-Options":    "nosniff",
+			"Referrer-Policy":           "strict-origin-when-cross-origin",
+			"Strict-Transport-Security": "max-age=31536000; includeSubDomains", // Use HSTS with caution!
+			// "Content-Security-Policy": "default-src 'self';", // Example CSP (adapt carefully!)
 		},
-		EnableCSRF:         true, 
+		// CSRF Configuration (used if you enable the CSRF middleware)
+		EnableCSRF:         true, // Flag to indicate intent; middleware must be added manually
 		CSRFKeyLookup:      "header:X-CSRF-Token, form:_csrf",
-		CSRFCookieName:     "__Host-csrf",
+		CSRFCookieName:     "__Host-csrf", // Use __Host- prefix for security if served over HTTPS
 		CSRFExpiration:     12 * time.Hour,
-		CSRFCookieSameSite: "Lax",
-		EnableRateLimiter:     true, 
-		RateLimiterMax:        100,
+		CSRFCookieSameSite: "Lax", // Or "Strict"
+		// Rate Limiter Configuration (used if you enable the Limiter middleware)
+		EnableRateLimiter:     true, // Flag to indicate intent
+		RateLimiterMax:        100,  // Max requests per window per IP
 		RateLimiterExpiration: 1 * time.Minute,
-		ErrorComponentGenerator: func(err error, code int, isDevMode bool) templ.Component {
-			errMsg := err.Error()
-			if fe, ok := err.(*fiber.Error); ok {
-				errMsg = fe.Message
-			}
-			if !isDevMode && code >= 500 {
-				errMsg = "Une erreur interne est survenue."
-			}
-			return views.ErrorPage(fmt.Sprintf("Erreur %d", code), errMsg, isDevMode) // Assurez-vous que views.ErrorPage existe
-		},
+		// Custom Error Page Renderer
+		ErrorComponentGenerator: CustomErrorComponentGenerator(isDev),
 	}
 
 	// --- 3. Server Initialization ---
 	server, err := webserver.NewServer(cfg)
 	if err != nil {
-		logger.Error("Échec de l'initialisation du webserver", "error", err)
+		logger.Error("Failed to initialize BlitzKit-Go server", "error", err)
 		os.Exit(1)
 	}
 
-	app := server.App() 
+	app := server.App() // Get the underlying Fiber app instance
 
-	// --- 4. Configuration des Middlewares (Exemple: CSRF, Rate Limiter) ---
+	// --- 4. Configure Middlewares (e.g., CSRF, Rate Limiter) ---
+	// These are added manually using the configuration from `cfg`.
+	// BlitzKit-Go's base middlewares (recover, CORS, request logging, security headers) are already set up.
 	if cfg.EnableCSRF {
 		app.Use(csrf.New(csrf.Config{
 			KeyLookup:      cfg.CSRFKeyLookup,
 			CookieName:     cfg.CSRFCookieName,
 			CookieSameSite: cfg.CSRFCookieSameSite,
 			Expiration:     cfg.CSRFExpiration,
-			ContextKey: webserver.CSRFContextKey, 
+			// Next: func(c *fiber.Ctx) bool {
+			//  // Example: skip CSRF for API routes
+			// 	return strings.HasPrefix(c.Path(), "/api/")
+			// },
+			ContextKey: webserver.CSRFContextKey, // Makes CSRF token available via c.Locals(webserver.CSRFContextKey)
 		}))
+		logger.Info("CSRF Protection Middleware enabled.")
 	}
+
 	if cfg.EnableRateLimiter {
 		app.Use(limiter.New(limiter.Config{
 			Max:        cfg.RateLimiterMax,
@@ -268,348 +270,310 @@ func main() {
 			KeyGenerator: func(c *fiber.Ctx) string {
 				return webserver.GetClientIP(c.Get(fiber.HeaderXForwardedFor), c.IP())
 			},
+			// LimitReached: func(c *fiber.Ctx) error {
+			// 	 return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{"error": "Too many requests"})
+			// },
 		}))
+		logger.Info("Rate Limiting Middleware enabled.")
 	}
 
-	// --- 5. Définir les Routes ---
+	// --- 5. Define Application Routes ---
 	app.Get("/", homeHandler(server))
 	app.Get("/sitemap.xml", sitemapHandler(server))
-    app.Post("/admin/cache/invalidate", invalidateCacheHandler(server)) // Sécuriser cette route ! (ex: avec un middleware d'auth)
-	app.Post("/submit", func(c *fiber.Ctx) error {
-		return c.SendString("Données soumises avec succès!")
+
+	// Example POST route (CSRF token would be required if CSRF middleware is active)
+	app.Post("/form-submit", func(c *fiber.Ctx) error {
+		// CSRF middleware (if enabled) handles validation automatically.
+		// Your form processing logic here...
+		return c.SendString("Form submitted successfully!")
+	})
+
+	// Admin/Protected route for cache invalidation (example)
+	// In a real app, add authentication/authorization middleware here
+	adminRoutes := app.Group("/admin") // Create a group for admin routes
+	// adminRoutes.Use(yourAuthMiddleware) // Apply auth middleware
+	adminRoutes.Post("/cache/invalidate", adminInvalidateCacheHandler(server))
+	adminRoutes.Post("/cache/flush", func(c *fiber.Ctx) error { // Example flush route
+		// server.Flush() // Call this carefully!
+		return c.SendString("Cache flush endpoint (implement with caution and security)")
 	})
 
 
-	// --- 6. Enregistrer le Middleware pour les Fichiers Statiques ---
+	// --- 6. Register Static File Middleware ---
+	// This serves files from `cfg.PublicDir`.
+	// It's often placed after application routes unless specific prefix overlaps are desired.
 	if cfg.PublicDir != "" {
 		app.Static("/", cfg.PublicDir, fiber.Static{
-			Compress: true,
+			Compress:      true,
+			ByteRange:     true, // Enable byte range requests for seeking in media files
+			Browse:        false, // Disable directory browsing for security
+			CacheDuration: 24 * time.Hour, // Example browser cache duration for static assets
+			MaxAge:        int((24 * time.Hour).Seconds()), // For Cache-Control header
 		})
+		logger.Info("Static file middleware enabled", "serving_from", cfg.PublicDir)
 	}
 
-	// --- 7. Cache Warmup (Optionnel) ---
-	server.RegisterForPageWarmup("home", webserver.CacheTTLInfo{IsInfinite: false}, func() (templ.Component, int64, error) {
-		return views.HomePage("Bienvenue ! (Warmup)"), time.Now().Unix(), nil // Assurez-vous que views.HomePage existe
-	})
+	// --- 7. Cache Warmup (Optional) ---
+	// Register items for warmup
+	server.RegisterForPageWarmup("home", webserver.CacheTTLInfo{IsInfinite: false},
+		HomePageGenerator(server, "Welcome! (Warmed Up)"))
+	server.RegisterForBytesWarmup("sitemap.xml", webserver.CacheTTLInfo{IsInfinite: true},
+		SitemapGenerator(server))
+
+	// Execute warmup in a goroutine to avoid blocking server startup
 	go func() {
-		logger.Info("Démarrage du préchauffage du cache...")
+		logger.Info("Starting cache warmup process...")
 		if err := server.ExecuteWarmup(); err != nil {
-			logger.Error("Échec du préchauffage du cache", "error", err)
+			logger.Error("Cache warmup process failed", "error", err)
 		} else {
-			logger.Info("Préchauffage du cache terminé.")
+			logger.Info("Cache warmup process finished successfully.")
 		}
 	}()
 
-
-	// --- 8. Handler 404 (Doit être le dernier) ---
+	// --- 8. Register 404 Not Found Handler (Must be the last middleware/handler) ---
 	app.Use(notFoundHandler(server))
 
-
-	// --- 9. Start Server & Handle Shutdown ---
+	// --- 9. Start Server and Handle Graceful Shutdown ---
 	go func() {
+		logger.Info("Starting BlitzKit-Go server...", "address", fmt.Sprintf(":%s", cfg.Port))
 		if err := server.Start(); err != nil {
-			if err.Error() != "http: Server closed" { 
-				logger.Error("Le serveur n'a pas pu démarrer ou s'est arrêté de manière inattendue", "error", err)
+			// http.ErrServerClosed is expected on graceful shutdown
+			if err.Error() != "http: Server closed" {
+				logger.Error("Server failed to start or stopped unexpectedly", "error", err)
+				// Consider a mechanism to signal the main goroutine to exit if startup fails critically
 			}
 		}
 	}()
-	logger.Info("Serveur démarré", "port", cfg.Port, "dev_mode", cfg.DevMode)
 
+	// Wait for interrupt signal to gracefully shut down the server
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
+	<-quit // Block until a signal is received
 
-	logger.Info("Signal d'arrêt reçu, fermeture du serveur...")
-	if err := server.Shutdown(); err != nil {
-		logger.Error("Échec de l'arrêt du serveur", "error", err)
-		os.Exit(1)
+	logger.Info("Shutdown signal received. Shutting down BlitzKit-Go server gracefully...")
+
+	// Perform server shutdown (closes Fiber app & L2 cache)
+	shutdownTimeout := 30 * time.Second // Give it 30 seconds to shutdown
+	if err := server.Shutdown(); err != nil { // server.Shutdown itself has a timeout
+		logger.Error("Server shutdown failed", "error", err)
+		os.Exit(1) // Exit with an error code
 	}
-	logger.Info("Arrêt du serveur terminé.")
-}
 
+	logger.Info("Server shutdown complete.")
+}
 ```
 
 ---
 
-## 5. Configuration Détaillée
+## 3. Configuration (`webserver.Config`)
 
-### 5.1 Struct `Config`
+The `webserver.Config` struct allows fine-grained control over the server's behavior.
 
-| Champ                     | Type                          | YAML/JSON Key                  | Description                                                                                                                                                              | Défaut (si applicable)        | Variable Env (prioritaire) |
-| :------------------------ | :---------------------------- | :----------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------- | :------------------------- |
-| `Port`                    | `string`                      | `port`                         | Port d'écoute.                                                                                                                                                           | `"8080"` (via `NewServer`)    | `PORT`                     |
-| `ReadTimeout`             | `time.Duration`               | `read_timeout`                 | Timeout lecture requête.                                                                                                                                                 | `30s` (via `NewServer`)       | -                          |
-| `WriteTimeout`            | `time.Duration`               | `write_timeout`                | Timeout écriture réponse.                                                                                                                                                | `30s` (via `NewServer`)       | -                          |
-| `IdleTimeout`             | `time.Duration`               | `idle_timeout`                 | Timeout inactivité connexion.                                                                                                                                            | `60s` (via `NewServer`)       | -                          |
-| `DevMode`                 | `bool`                        | `dev_mode`                     | Mode développement (logs verbeux, etc.).                                                                                                                                 | `false`                       | `APP_ENV=development`      |
-| `Logger`                  | `*slog.Logger`                | `-`                            | Instance `slog.Logger`. Si nil, un logger par défaut est créé.                                                                                                           | `nil` (défaut créé)         | -                          |
-| `PublicDir`               | `string`                      | `public_dir`                   | **Requis si service de fichiers statiques désiré.** Chemin vers le répertoire public (après traitement par `StaticProcessor`).                                      | `""`                          | -                          |
-| `CacheDir`                | `string`                      | `cache_dir`                    | Chemin pour BadgerDB (L2). Si vide, L2 désactivé.                                                                                                                         | `""`                          | -                          |
-| `SourcesDir`              | `string`                      | `sources_dir`                  | Chemin vers sources CSS/JS à minifier.                                                                                                                                   | `""`                          | -                          |
-| `StaticsDir`              | `string`                      | `statics_dir`                  | Chemin vers statiques à copier (images, etc.).                                                                                                                          | `""`                          | -                          |
-| `ErrorHandler`            | `func(c *fiber.Ctx, err error) error` | `-`                            | Handler d'erreur Fiber personnalisé. Si nil, `server.handleError` est utilisé.                                                                                         | `nil`                         | -                          |
-| `NotFoundComponent`       | `templ.Component`             | `-`                            | Composant Templ pour erreurs 404 (utilisé par `handleError` si l'erreur est un 404 et pas de `ErrorComponentGenerator`). Non utilisé par un handler 404 spécifique.   | `nil`                         | -                          |
-| `ErrorComponentGenerator` | `ErrorComponentGenerator`     | `-`                            | `func(err error, code int, isDev bool) templ.Component` pour générer pages d'erreur.                                                                                  | `nil`                         | -                          |
-| `CacheL1DefaultTTL`       | `time.Duration`               | `cache_l1_default_ttl`         | TTL par défaut L1. `0` ou négatif avec `IsInfinite:false` peut signifier `cache.DefaultExpiration` selon `go-cache`.                                                | `5m` (via `NewServer`)        | `CACHE_L1_DEFAULT_TTL`     |
-| `CacheL2DefaultTTL`       | `time.Duration`               | `cache_l2_default_ttl`         | TTL par défaut L2. `0` ou négatif signifie pas d'expiration automatique par TTL pour Badger.                                                                             | `24h` (via `NewServer`)       | `CACHE_L2_DEFAULT_TTL`     |
-| `BadgerGCInterval`        | `time.Duration`               | `badger_gc_interval`           | Intervalle GC BadgerDB. `0` ou négatif désactive GC périodique.                                                                                                          | `1h` (via `NewServer`)        | `BADGER_GC_INTERVAL`       |
-| `BadgerGCDiscardRatio`    | `float64`                     | `badger_gc_discard_ratio`      | Ratio GC BadgerDB.                                                                                                                                                       | `0.5` (via `NewServer`)       | -                          |
-| `WarmupConcurrency`       | `int`                         | `warmup_concurrency`           | Goroutines max pour warmup.                                                                                                                                              | `4` (via `NewServer`)         | -                          |
-| `EnableCSRF`              | `bool`                        | `enable_csrf`                  | Flag pour indiquer si CSRF doit être activé (l'utilisateur doit ajouter le middleware).                                                                                 | `false`                       | -                          |
-| `CSRFKeyLookup`           | `string`                      | `csrf_key_lookup`              | Source token CSRF (Format Fiber: "header:X-CSRF-Token", "form:_csrf").                                                                                                   | `""`                          | -                          |
-| `CSRFCookieName`          | `string`                      | `csrf_cookie_name`             | Nom cookie CSRF.                                                                                                                                                         | `""`                          | -                          |
-| `CSRFExpiration`          | `time.Duration`               | `csrf_expiration`              | Durée validité token CSRF.                                                                                                                                               | `0`                           | -                          |
-| `CSRFCookieSameSite`      | `string`                      | `csrf_cookie_same_site`        | Politique SameSite cookie CSRF.                                                                                                                                          | `""`                          | -                          |
-| `EnableRateLimiter`       | `bool`                        | `enable_rate_limiter`          | Flag pour indiquer si Rate Limiter doit être activé (l'utilisateur doit ajouter le middleware).                                                                        | `false`                       | -                          |
-| `RateLimiterMax`          | `int`                         | `rate_limiter_max`             | Requêtes max par fenêtre.                                                                                                                                                | `0`                           | -                          |
-| `RateLimiterExpiration`   | `time.Duration`               | `rate_limiter_expiration`      | Durée fenêtre rate limiting.                                                                                                                                             | `0`                           | -                          |
-| `SecurityHeaders`         | `map[string]string`           | `security_headers`             | Headers HTTP de sécurité à ajouter (via middleware de base).                                                                                                             | `nil`                         | -                          |
-| `EnableMetrics`           | `bool`                        | `enable_metrics`               | Active endpoint Prometheus `/metrics`.                                                                                                                                   | `false`                       | -                          |
-| `CustomMiddlewares`       | `[]fiber.Handler`             | `-`                            | Middlewares Fiber personnalisés ajoutés après les middlewares de base.                                                                                                     | `nil`                         | -                          |
+| Field                     | Type                          | Default (in `NewServer`) | Env Var Override        | Description                                                                                                                            |
+| :------------------------ | :---------------------------- | :----------------------- | :---------------------- | :------------------------------------------------------------------------------------------------------------------------------------- |
+| `Port`                    | `string`                      | `"8080"`                 | `PORT`                  | HTTP listening port.                                                                                                                   |
+| `ReadTimeout`             | `time.Duration`               | `30s`                    |                         | Max duration for reading the entire request.                                                                                           |
+| `WriteTimeout`            | `time.Duration`               | `30s`                    |                         | Max duration for writing the response.                                                                                                 |
+| `IdleTimeout`             | `time.Duration`               | `60s`                    |                         | Max duration for an idle keep-alive connection.                                                                                        |
+| `DevMode`                 | `bool`                        | `false`                  | `APP_ENV=development`   | Enables development mode (verbose logs, error details, etc.).                                                                          |
+| `Logger`                  | `*slog.Logger`                | (default `slog` logger)  |                         | Custom `slog.Logger` instance. If `nil`, a default is created.                                                                         |
+| `PublicDir`               | `string`                      | `""`                     |                         | **Required if serving static files.** Absolute/relative path to the public directory (after `StaticProcessor` runs).                  |
+| `CacheDir`                | `string`                      | `""`                     |                         | Absolute/relative path for BadgerDB L2 cache. If empty, L2 is disabled. Must be writable.                                               |
+| `SourcesDir`              | `string`                      | `""`                     |                         | Path to CSS/JS source files for minification.                                                                                          |
+| `StaticsDir`              | `string`                      | `""`                     |                         | Path to static assets (images, fonts) to be copied directly to `PublicDir`.                                                            |
+| `ErrorHandler`            | `func(c *fiber.Ctx, err error) error` | (internal `handleError`) |                         | Custom Fiber error handler. If `nil`, BlitzKit-Go's default `handleError` is used.                                                     |
+| `NotFoundComponent`       | `templ.Component`             | `nil`                    |                         | Templ component for 404 errors (used by default `handleError` if no `ErrorComponentGenerator` and error is 404). Not used by a custom 404 handler. |
+| `ErrorComponentGenerator` | `ErrorComponentGenerator`     | `nil`                    |                         | `func(err error, code int, isDev bool) templ.Component` to generate custom error pages.                                                |
+| `CacheL1DefaultTTL`       | `time.Duration`               | `5m`                     | `CACHE_L1_DEFAULT_TTL`  | Default TTL for L1 cache items (if not `IsInfinite`).                                                                                  |
+| `CacheL2DefaultTTL`       | `time.Duration`               | `24h`                    | `CACHE_L2_DEFAULT_TTL`  | Default TTL for L2 cache items (if not `IsInfinite`). `0` or negative means no TTL-based expiration for Badger.                         |
+| `BadgerGCInterval`        | `time.Duration`               | `1h`                     | `BADGER_GC_INTERVAL`    | Interval for BadgerDB's value log GC. `0` or negative disables periodic GC.                                                              |
+| `BadgerGCDiscardRatio`    | `float64`                     | `0.5`                    |                         | Discard ratio for BadgerDB's GC.                                                                                                       |
+| `WarmupConcurrency`       | `int`                         | `4`                      |                         | Max number of goroutines for concurrent cache warmup.                                                                                  |
+| `EnableCSRF`              | `bool`                        | `false`                  |                         | Flag to indicate if CSRF protection should be enabled (user must add the middleware).                                                  |
+| `CSRFKeyLookup`           | `string`                      | `""`                     |                         | Fiber CSRF `KeyLookup` string (e.g., `"header:X-CSRF-Token, form:_csrf"`).                                                               |
+| `CSRFCookieName`          | `string`                      | `""`                     |                         | Name of the CSRF cookie.                                                                                                               |
+| `CSRFExpiration`          | `time.Duration`               | `0` (no default set by BlitzKit) |                         | Expiration duration for CSRF tokens.                                                                                                   |
+| `CSRFCookieSameSite`      | `string`                      | `""`                     |                         | `SameSite` policy for the CSRF cookie (e.g., `"Lax"`, `"Strict"`).                                                                     |
+| `EnableRateLimiter`       | `bool`                        | `false`                  |                         | Flag to indicate if Rate Limiting should be enabled (user must add the middleware).                                                    |
+| `RateLimiterMax`          | `int`                         | `0` (no default set by BlitzKit) |                         | Max requests per window for the rate limiter.                                                                                          |
+| `RateLimiterExpiration`   | `time.Duration`               | `0` (no default set by BlitzKit) |                         | Time window for the rate limiter.                                                                                                      |
+| `SecurityHeaders`         | `map[string]string`           | `nil`                    |                         | Map of HTTP security headers to be added to every response by a base middleware.                                                       |
+| `EnableMetrics`           | `bool`                        | `false`                  |                         | Enables the Prometheus metrics endpoint at `/metrics`.                                                                                 |
+| `CustomMiddlewares`       | `[]fiber.Handler`             | `nil`                    |                         | Slice of custom `fiber.Handler` middlewares to be added after base middlewares.                                                        |
 
-### 5.2 Variables d'Environnement Reconnues (par `NewServer` ou `utils`)
-
-*   `PORT`: Surcharge `Config.Port`.
-*   `APP_ENV`: Si `"development"`, `Config.DevMode` est `true` par défaut (si `cfg.Logger` est `nil`).
-*   `CACHE_L1_DEFAULT_TTL`: Surcharge `Config.CacheL1DefaultTTL` (format `time.ParseDuration`).
-*   `CACHE_L2_DEFAULT_TTL`: Surcharge `Config.CacheL2DefaultTTL` (format `time.ParseDuration`).
-*   `BADGER_GC_INTERVAL`: Surcharge `Config.BadgerGCInterval` (format `time.ParseDuration`).
-*   `CACHE_L1_CLEANUP_INTERVAL`: Intervalle de nettoyage L1 `go-cache` (défaut interne de `NewCache` est `10m`).
-*   `CORS_ALLOW_ORIGINS`: Origines autorisées pour CORS (utilisé par le middleware CORS de base).
-
-### 5.3 Validation au Démarrage (`NewServer`)
-*   Valide et résout les chemins `PublicDir`, `CacheDir`, `SourcesDir`, `StaticsDir`.
-*   Vérifie l'accessibilité en écriture de `CacheDir` (si configuré).
-*   Assure l'existence des répertoires configurés.
+**Environment Variables:**
+BlitzKit-Go recognizes these environment variables to override `Config` defaults (see `NewServer` and `utils.go` for parsing logic):
+*   `PORT`
+*   `APP_ENV` (set to `"development"` for `DevMode`)
+*   `CACHE_L1_DEFAULT_TTL` (e.g., `"15m"`, `"1h"`)
+*   `CACHE_L2_DEFAULT_TTL`
+*   `BADGER_GC_INTERVAL`
+*   `CACHE_L1_CLEANUP_INTERVAL` (default `10m` used by `NewCache` internally if not overridden)
+*   `CORS_ALLOW_ORIGINS` (comma-separated list, e.g., `"http://localhost:3000,https://app.example.com"`)
 
 ---
 
-## 6. API de Référence Détaillée
+## 4. Core Components & API
 
-### 6.1 Initialisation et Cycle de Vie
+### 4.1 Server Lifecycle
+*   **`webserver.NewServer(cfg Config) (*Server, error)`**: Initializes and returns a new `*Server` instance. This is the primary entry point. It sets up logging, caching, static processing, base middlewares, and monitoring.
+*   **`(*Server) App() *fiber.App`**: Returns the underlying `*fiber.App` instance. Use this to register your application routes, specific middlewares, etc.
+*   **`(*Server) Start() error`**: Starts the Fiber HTTP server. This is a blocking call.
+*   **`(*Server) Shutdown() error`**: Initiates a graceful shutdown of the Fiber server and closes the L2 cache.
 
-*   **`webserver.Init()`**
-    *   Description : Fonction d'initialisation globale (utilise `sync.Once`). Appelée par `NewServer`. (Peu d'impact visible.)
-*   **`webserver.NewServer(cfg Config) (*Server, error)`**
-    *   Description : Constructeur principal. Valide config, init logger, cache, Fiber, `StaticProcessor`, middlewares de base, monitoring.
-    *   Retourne : `*Server`, `error`.
-*   **`(*Server) App() *fiber.App`**
-    *   Description : Retourne l'instance `*fiber.App` sous-jacente pour enregistrer des routes, middlewares, etc.
-*   **`(*Server) Start() error`**
-    *   Description : Lance le serveur Fiber. Bloquant.
-*   **`(*Server) Shutdown() error`**
-    *   Description : Arrêt gracieux. Ferme Fiber et le cache L2.
+### 4.2 Caching System
+The caching system is a core part of BlitzKit-Go, designed for performance.
 
-### 6.2 Routage et Middlewares
-Le routage et l'ajout de middlewares spécifiques (comme CSRF, Rate Limiter) se font directement sur l'instance `server.App()` en utilisant les méthodes standard de Fiber (ex: `app.Get()`, `app.Post()`, `app.Use()`).
-Le package fournit `webserver.CSRFContextKey` (`"csrf"`) qui peut être utilisé avec le middleware CSRF de Fiber pour accéder au token dans `c.Locals()`.
+*   **`CacheEntry` struct:** Defines the structure stored in L1/L2 cache (`Data []byte`, `LastModified int64`, `ExpiresAt int64`).
+*   **`CacheTTLInfo` struct:** (`IsInfinite bool`) Specifies if a cache entry should have an "infinite" TTL (no time-based expiration, relying on manual invalidation or L1/L2 eviction policies). If `false`, `CacheL1DefaultTTL` and `CacheL2DefaultTTL` are used.
 
-### 6.3 Rendu et Cache (Méthodes sur `*Server`)
-
+**Rendering with Cache:**
 *   **`(*Server) RenderPage(ctx *fiber.Ctx, key string, ttlInfo CacheTTLInfo, generatorFunc PageGeneratorFunc) error`**
-    *   Description : Rend un `templ.Component` via le cache L1/L2. Gère lookup, génération, stockage. Définit `Content-Type: text/html`, `X-Cache-Status`.
+    *   Renders HTML content (typically from a `templ.Component` via the `PageGeneratorFunc`) using the L1/L2 cache.
+    *   `PageGeneratorFunc`: `func() (page templ.Component, lastModified int64, err error)`
+    *   Handles cache lookup (L1 -> L2), content generation on miss, and storing in both caches.
+    *   Sets `Content-Type: text/html; charset=utf-8` and `X-Cache-Status` header.
 *   **`(*Server) RenderBytesPage(ctx *fiber.Ctx, key string, contentType string, ttlInfo CacheTTLInfo, generatorFunc BytesGeneratorFunc) error`**
-    *   Description : Rend des `[]byte` (XML, JSON, etc.) via le cache L1/L2. Définit `Content-Type`, `X-Cache-Status`.
+    *   Similar to `RenderPage` but for raw `[]byte` content (e.g., XML, JSON).
+    *   `BytesGeneratorFunc`: `func() (data []byte, lastModified int64, err error)`
+    *   Sets the provided `contentType` and `X-Cache-Status` header.
 
-### 6.4 Gestion Manuelle du Cache (Méthodes sur `*Server`)
+**Manual Cache Management:**
+*   **`(*Server) Invalidate(key string) error`**: Removes a specific `key` from both L1 and L2 caches. Logs the operation and increments Prometheus counters.
+*   **`(*Server) Flush() error`**: **Destructive operation.** Clears all items from the L1 cache and drops all data from the L2 BadgerDB store. Use with caution.
 
-*   **`(*Server) Invalidate(key string) error`**: Supprime une clé des caches L1 et L2.
-*   **`(*Server) Flush() error`**: **Destructif !** Vide L1 et L2 (`DropAll`).
-*   **`(*Server) RegisterForPageWarmup(key string, ttlInfo CacheTTLInfo, generator PageGeneratorFunc)`**: Enregistre un générateur de page Templ pour le préchauffage.
-*   **`(*Server) RegisterForBytesWarmup(key string, ttlInfo CacheTTLInfo, generator BytesGeneratorFunc)`**: Enregistre un générateur de bytes pour le préchauffage.
-*   **`(*Server) ExecuteWarmup() error`**: Exécute le préchauffage pour tous les items enregistrés. S'exécute en parallèle (`WarmupConcurrency`).
+**Cache Warmup:**
+*   **`(*Server) RegisterForPageWarmup(key string, ttlInfo CacheTTLInfo, generator PageGeneratorFunc)`**: Registers a `PageGeneratorFunc` for cache warmup.
+*   **`(*Server) RegisterForBytesWarmup(key string, ttlInfo CacheTTLInfo, generator BytesGeneratorFunc)`**: Registers a `BytesGeneratorFunc` for cache warmup.
+*   **`(*Server) ExecuteWarmup() error`**: Executes the warmup process for all registered items. It generates content (if not already in L1) and stores it in L1 and L2 caches. Runs concurrently based on `Config.WarmupConcurrency`. Logs progress and errors, updates Prometheus metrics.
 
-### 6.5 Sitemap
+### 4.3 Static Asset Processing (`StaticProcessor`)
+Executed once during `NewServer` initialization:
+1.  **Purges `Config.PublicDir`**: Removes the existing public directory and recreates it.
+2.  **Minifies Sources**: Iterates through `Config.SourcesDir`.
+    *   Minifies `.css` and `.js` files using `tdewolff/minify/v2`.
+    *   If `Config.DevMode` is true, `.debug.js` files are prioritized over regular `.js` files for the same base name (e.g., `script.debug.js` over `script.js`).
+    *   Writes minified output to `Config.PublicDir`, preserving relative subdirectory structure.
+3.  **Copies Statics**: Recursively copies all files and directories from `Config.StaticsDir` to `Config.PublicDir`.
 
-*   **`SitemapEntry` (struct)**: Définit une entrée de sitemap (`URL`, `LastMod`, `ChangeFreq`, `Priority`).
-*   **Constantes `SitemapChangeFreq*`**: Valeurs standard pour `ChangeFreq` (`always`, `hourly`, etc.).
-*   **`GenerateSitemapXMLBytes(entries []SitemapEntry) ([]byte, error)`**: Génère le XML du sitemap à partir d'une liste d'entrées.
+Your application should then serve static files from `Config.PublicDir` using Fiber's `app.Static("/", cfg.PublicDir)` middleware.
 
-### 6.6 Utilitaires (`webserver.*` et méthodes `*Server`)
+### 4.4 Error Handling
+*   BlitzKit-Go sets up a default error handler (`server.handleError`) for the Fiber application.
+*   It intercepts errors returned by handlers or from `c.Next(err)`.
+*   **Logic:**
+    1.  Determines HTTP status code (defaults to 500, uses `fiber.Error.Code` if available).
+    2.  Logs the error with request details (path, method, IP, original error).
+    3.  Sets the response status code.
+    4.  **Response Formatting:**
+        *   If `webserver.WantsJSON(c)` is true (client `Accept` header contains `application/json`): Sends a JSON response: `{"error": "message"}`. In `DevMode`, internal error details might be included.
+        *   Else, if `Config.ErrorComponentGenerator` is provided: Attempts to render the `templ.Component` returned by this generator.
+        *   Else (fallback): Sends a plain text response: `<code>: <message>`.
+        *   In production (`!DevMode`), 5xx error messages are generic ("Internal Server Error").
+*   **`webserver.ErrorComponentGenerator` type:** `func(err error, code int, isDev bool) templ.Component`. Allows you to provide a function that generates a `templ.Component` for displaying error pages.
 
-*   **`(*Server) GetLogger() *slog.Logger`**: Retourne le logger configuré.
-*   **`(*Server) GetConfig() Config`**: Retourne la configuration effective du serveur.
-*   **`webserver.GetClientIP(xForwardedFor, remoteAddr string) string`**: Extrait l'IP client.
-*   **`webserver.WantsJSON(c *fiber.Ctx) bool`**: Vérifie si le client demande du JSON via l'en-tête `Accept`.
-*   **`webserver.GetEnvOrDefault(logger *slog.Logger, key, configValue, defaultValue string) string`**: Récupère une variable d'environnement ou utilise des valeurs de repli.
-*   Autres fonctions dans `utils.go` pour la gestion des répertoires, valeurs par défaut, parsing de durées.
+### 4.5 Middlewares
+**Base Middlewares (Applied Automatically by `NewServer`):**
+*   **Recovery:** `github.com/gofiber/fiber/v2/middleware/recover`. Stack traces enabled in `DevMode`.
+*   **CORS:** `github.com/gofiber/fiber/v2/middleware/cors`. Configured using `CORS_ALLOW_ORIGINS` environment variable. Strict in production regarding `*` with credentials.
+*   **Security Headers:** A custom middleware applies headers defined in `Config.SecurityHeaders`.
+*   **Request Logging:** `server.logRequests` provides structured `slog` logs for each request (method, path, status, duration, IP, response size, user-agent, request ID, cache status).
+*   **Custom Middlewares:** Any `fiber.Handler`s provided in `Config.CustomMiddlewares` are added.
 
----
+**Optional Middlewares (Manual Setup Required by User):**
+*   **CSRF Protection:** If `Config.EnableCSRF` is true, you should add Fiber's CSRF middleware using settings from `Config` (e.g., `CSRFKeyLookup`, `CSRFCookieName`). Use `webserver.CSRFContextKey` (`"csrf"`) as the `ContextKey` in `csrf.Config` to make the token accessible via `c.Locals(webserver.CSRFContextKey)`.
+*   **Rate Limiting:** If `Config.EnableRateLimiter` is true, add Fiber's Limiter middleware using settings from `Config` (e.g., `RateLimiterMax`, `RateLimiterExpiration`).
 
-## 7. Processus Internes Détaillés
+### 4.6 Monitoring
+*   **Prometheus Metrics (`Config.EnableMetrics: true`):**
+    *   Endpoint: `/metrics`.
+    *   Uses `github.com/ansrivas/fiberprometheus/v2` for Fiber metrics.
+    *   Custom BlitzKit-Go metrics (see `monitoring.go` for full list):
+        *   Cache L1/L2: `hits`, `misses`, `sets`, `l1_loaded_from_l2`, `l2_set_errors`.
+        *   Invalidation: `invalidations_total`, `invalidation_errors_total`.
+        *   Warmup: `warmup_skipped_total`, `warmup_errors_total`, `warmup_item_duration_seconds` (histogram), `warmup_total_duration_seconds` (gauge).
+        *   Page Generation: `page_generation_duration_seconds` (histogram vec, labeled by `cache_key`).
+*   **Health Check Endpoint (`GET /health`):**
+    *   Always enabled.
+    *   Checks basic server responsiveness.
+    *   If `Config.CacheDir` (L2 cache) is configured, performs a quick read check on BadgerDB.
+    *   Returns JSON: `{"status": "ok|error", "l2_cache": "ok|unhealthy|unavailable", "l2_cache_error": "details if unhealthy"}`.
+    *   HTTP Status: `200 OK` if all checks pass, `503 Service Unavailable` if a critical component (like L2 cache) fails.
 
-### 7.1 Workflow d'une Requête avec `RenderPage`
-
-1.  Requête HTTP -> Fiber -> Middlewares de base (`recover`, `cors`, `logRequests`, `security_headers`, `custom_middlewares` de `Config`).
-2.  Puis, les middlewares configurés par l'utilisateur (ex: CSRF, Rate Limiter).
-3.  Routage Fiber (`app.Get`, etc.) -> Handler applicatif (`func(c *fiber.Ctx) error`).
-4.  Handler appelle `server.RenderPage(c, key, ttlInfo, generatorFunc)`.
-5.  **Lookup L1**: `server.Cache.L1.Get(key)`
-    *   **Hit**: Incrémente métrique L1 hit, récupère `[]byte`, set `X-Cache-Status: HIT-L1`, set `Content-Type`, `c.Send(bytes)`. Fin.
-    *   **Miss**: Incrémente métrique L1 miss. Continue.
-6.  **Lookup L2**: `server.Cache.L2.View(...)` pour lire `CacheEntry`.
-    *   **Hit & Valide**: Incrémente L2 hit, décode JSON, **Promotion L1**: `server.Cache.L1.Set(...)` (incrémente `loaded_from_l2`), set `X-Cache-Status: HIT-L2`, set `Content-Type`, `c.Send(cacheEntry.Data)`. Fin.
-    *   **Miss/Expiré/Erreur L2**: Incrémente L2 miss. Continue.
-7.  **Génération**: Appelle `generatorFunc()`. Si `PageGeneratorFunc`, rend le `component` en `[]byte`. Mesure durée (observe métrique). Gère erreurs.
-8.  **Stockage Cache**:
-    *   **L1**: `server.Cache.L1.Set(...)` (incrémente L1 set).
-    *   **L2**: `server.storeInL2(...)` (encode `CacheEntry` en JSON, set TTL BadgerDB si applicable, écrit, incrémente L2 set/error).
-9.  **Envoi Réponse**: Set `X-Cache-Status: MISS`, set `Content-Type`, `c.Send(generatedBytes)`.
-
-(Workflow `RenderBytesPage` similaire mais travaille directement avec les `[]byte` du générateur.)
-
----
-
-## 8. Middleware
-
-### 8.1 Middlewares de Base (Automatiques)
-Lors de `NewServer`, les middlewares suivants sont configurés sur l'instance Fiber via `setupBaseMiddlewares`:
-*   `recover.New()`: Pour la récupération après panic. Stack trace en `DevMode`.
-*   `cors.New()`: Gestion CORS. `AllowOrigins` est configurable via la variable d'environnement `CORS_ALLOW_ORIGINS`. Comportement strict en production.
-*   Headers de Sécurité : Si `Config.SecurityHeaders` est fourni, un middleware est ajouté pour les appliquer.
-*   `logRequests`: Journalisation structurée de chaque requête.
-*   `Config.CustomMiddlewares`: Tout handler `fiber.Handler` fourni dans cette slice est ajouté.
-
-### 8.2 Middlewares Optionnels (Configuration Manuelle)
-*   **CSRF**: Si `Config.EnableCSRF` est `true`, vous devez manuellement ajouter le middleware CSRF de Fiber à votre application :
-    ```go
-    if cfg.EnableCSRF {
-        app.Use(csrf.New(csrf.Config{
-            KeyLookup:      cfg.CSRFKeyLookup,
-            CookieName:     cfg.CSRFCookieName,
-            // ... autres options de cfg ...
-            ContextKey:     webserver.CSRFContextKey, // Important
-        }))
-    }
-    ```
-    Le `webserver.CSRFContextKey` (`"csrf"`) peut être utilisé pour récupérer le token via `c.Locals(webserver.CSRFContextKey)` (utile pour l'injecter dans les formulaires).
-*   **Rate Limiter**: Si `Config.EnableRateLimiter` est `true`, ajoutez manuellement le middleware Limiter de Fiber :
-    ```go
-    if cfg.EnableRateLimiter {
-        app.Use(limiter.New(limiter.Config{
-            Max:        cfg.RateLimiterMax,
-            Expiration: cfg.RateLimiterExpiration,
-            KeyGenerator: func(c *fiber.Ctx) string { // Exemple
-                return webserver.GetClientIP(c.Get(fiber.HeaderXForwardedFor), c.IP())
-            },
-            // ...
-        }))
-    }
-    ```
+### 4.7 Utilities
+*   **`webserver.SitemapEntry` struct & `webserver.GenerateSitemapXMLBytes([]SitemapEntry) ([]byte, error)`**: For creating sitemap.xml content.
+*   **`webserver.GetClientIP(xForwardedFor, remoteAddr string) string`**: Extracts client IP, prioritizing `X-Forwarded-For`.
+*   **`webserver.WantsJSON(c *fiber.Ctx) bool`**: Checks if the request `Accept` header prefers JSON.
+*   **`webserver.GetEnvOrDefault(logger *slog.Logger, key, configValue, defaultValue string) string`**: Utility to fetch environment variables with fallbacks.
+*   Other helpers in `utils.go` for directory management (`ensureDirExists`, `checkDirWritable`), default values (`defaultDuration`, `defaultInt`), and duration parsing (`parseDurationEnv`).
 
 ---
 
-## 9. Sécurité
+## 5. Advanced Usage & Internals
 
-*   **Headers de Sécurité**: Configurez `Config.SecurityHeaders` pour des en-têtes comme `X-Frame-Options`, `Strict-Transport-Security`, `Content-Security-Policy`, etc.
-*   **CORS**: Configurez `CORS_ALLOW_ORIGINS` de manière restrictive en production.
-*   **CSRF**: Si activé manuellement, assurez-vous que votre frontend envoie le token correctement (`CSRFKeyLookup`). Utilisez des noms de cookie sécurisés (`__Host-` si HTTPS).
-*   **Rate Limiting**: Si activé manuellement, ajustez les seuils (`RateLimiterMax`, `RateLimiterExpiration`) à vos besoins.
-*   **Gestion des Erreurs**: Assurez-vous que `Config.DevMode` est `false` en production pour ne pas exposer de détails d'erreur sensibles.
-*   **Dépendances**: Maintenez les dépendances à jour, en particulier Fiber et BadgerDB.
-*   **Invalidation de Cache**: Les méthodes `Invalidate` et `Flush` sont puissantes. Si vous les exposez via des endpoints HTTP (comme dans l'exemple `invalidateCacheHandler`), assurez-vous que ces endpoints sont correctement sécurisés (authentification, autorisation).
+### 5.1 Cache Workflow (`RenderPage` / `RenderBytesPage`)
+1.  HTTP Request arrives -> Fiber processes base middlewares.
+2.  User-defined middlewares (CSRF, Limiter, etc.) run.
+3.  Fiber routes to your application handler.
+4.  Handler calls `server.RenderPage(...)` or `server.RenderBytesPage(...)`.
+5.  **L1 Cache Lookup:**
+    *   **Hit:** Content served from L1. `X-Cache-Status: HIT-L1`. Metrics updated. Request ends.
+    *   **Miss:** Proceed to L2. Metrics updated.
+6.  **L2 Cache Lookup:**
+    *   **Hit (Valid & Unmarshaled):** Content served from L2. Content is **promoted to L1**. `X-Cache-Status: HIT-L2`. Metrics updated. Request ends.
+    *   **Miss / Expired / Unmarshal Error:** Proceed to generation. Metrics updated.
+7.  **Content Generation:** The provided `PageGeneratorFunc` or `BytesGeneratorFunc` is executed.
+    *   For `PageGeneratorFunc`, the `templ.Component` is rendered to `[]byte`.
+    *   Duration is measured and recorded (Prometheus metric).
+8.  **Store in Cache:**
+    *   Generated content is stored in L1 (with L1 TTL or no expiration). Metrics updated.
+    *   Generated content (as `CacheEntry`) is marshaled to JSON and stored in L2 (with L2 TTL or no expiration). Metrics updated.
+9.  **Serve Generated Content:** `X-Cache-Status: MISS`. Request ends.
 
----
-
-## 10. Monitoring et Observabilité
-
-### 10.1 Métriques Prometheus
-*   **Activation**: `Config.EnableMetrics: true`.
-*   **Endpoint**: `/metrics` (exposé par `ansrivas/fiberprometheus/v2`).
-*   **Métriques Spécifiques au Webserver**:
-    *   `webserver_cache_l1_hits_total`
-    *   `webserver_cache_l1_misses_total`
-    *   `webserver_cache_l1_sets_total`
-    *   `webserver_cache_l1_loaded_from_l2_total`
-    *   `webserver_cache_l2_hits_total`
-    *   `webserver_cache_l2_misses_total`
-    *   `webserver_cache_l2_sets_total`
-    *   `webserver_cache_l2_set_errors_total`
-    *   `webserver_cache_invalidations_total`
-    *   `webserver_cache_invalidation_errors_total`
-    *   `webserver_cache_warmup_skipped_total`
-    *   `webserver_cache_warmup_errors_total`
-    *   `webserver_cache_warmup_item_duration_seconds` (Histogram)
-    *   `webserver_cache_warmup_total_duration_seconds` (Gauge)
-    *   `webserver_page_generation_duration_seconds` (HistogramVec, label: `cache_key`)
-*   **Métriques Fiber**: Latence, requêtes par statut/méthode, etc. (fournies par `fiberprometheus`).
-
-### 10.2 Health Check
-*   **Endpoint**: `GET /health`.
-*   **Logique**: Répond HTTP 200 si le serveur est en cours d'exécution. Si le cache L2 (BadgerDB) est configuré, il tente une lecture simple pour vérifier son accessibilité.
-*   **Réponses**:
-    *   `200 OK`: `{"status": "ok", "l2_cache": "ok"}` (si L2 OK)
-    *   `200 OK`: `{"status": "ok", "l2_cache": "unavailable", "l2_cache_error": "L2 Cache (BadgerDB) is not configured/initialized"}` (si L2 non configuré)
-    *   `503 Service Unavailable`: `{"status": "error", "l2_cache": "unhealthy", "l2_cache_error": "<badger error details>"}` (si lecture L2 échoue).
-
-### 10.3 Logging (`slog`)
-*   Utilisez le logger `slog` configuré (accessible via `server.GetLogger()`).
-*   Le middleware `logRequests` fournit des logs détaillés et structurés pour chaque requête.
+### 5.2 BadgerDB L2 Cache GC
+*   If `Config.BadgerGCInterval` is positive, a background goroutine (`runBadgerGC`) periodically runs `L2.RunValueLogGC(Config.BadgerGCDiscardRatio)`.
+*   This helps reclaim disk space in BadgerDB. It stops gracefully on server shutdown.
 
 ---
 
-## 11. Gestion des Erreurs
+## 6. Best Practices
 
-*   L'`ErrorHandler` par défaut (`server.handleError`) est configuré pour l'instance Fiber. Il est appelé quand un handler retourne une erreur ou via `c.Next(err)`.
-*   Il détermine le code HTTP et le message à partir de l'erreur (priorité à `*fiber.Error`).
-*   Logue l'erreur avec des détails contextuels.
-*   **Format de Réponse**:
-    *   Si `webserver.WantsJSON(c)` est vrai : Réponse JSON `{"error": "message"}`.
-    *   Sinon, et si `Config.ErrorComponentGenerator` est fourni : Tente de rendre le composant Templ généré.
-    *   Sinon (fallback) : Réponse `text/plain` `<code>: <message>`.
-    *   En `DevMode`, les messages d'erreur peuvent être plus détaillés. En production, les erreurs 5xx affichent "Internal Server Error".
-*   Vous pouvez fournir un `ErrorHandler` entièrement personnalisé dans `Config.ErrorHandler` ou simplement un `Config.ErrorComponentGenerator` pour personnaliser l'affichage HTML des erreurs.
-
----
-
-## 12. Bonnes Pratiques et Conseils
-
-*   **Handlers Fiber**: Utilisez la signature standard `func(c *fiber.Ctx) error`.
-*   **Clés de Cache**: Choisissez des clés uniques et significatives.
-*   **`CacheTTLInfo`**: Utilisez `IsInfinite: true` pour les contenus stables (sitemap, etc.) dont l'invalidation est manuelle.
-*   **Generator Functions**: Concentrez-les sur la récupération de données et la création du contenu.
-*   **Warmup Sélectif**: Ne préchauffez que les ressources critiques pour éviter une charge excessive au démarrage.
-*   **Configuration**: Utilisez des variables d'environnement pour les déploiements.
-*   **Ordre des Middlewares/Handlers**: L'ordre est crucial dans Fiber. Typiquement, le handler 404 et `app.Static` viennent en dernier.
-*   **Sécurité des Endpoints d'Invalidation**: Si vous créez des endpoints HTTP pour appeler `server.Invalidate()` ou `server.Flush()`, **sécurisez-les impérativement** (authentification, autorisation forte).
+*   **Fiber Handlers:** Use the standard `func(c *fiber.Ctx) error` signature for your route handlers.
+*   **Cache Keys:** Use unique, descriptive, and consistent cache keys. Consider namespacing (e.g., `"page:/about"`, `"data:user:123"`).
+*   **`CacheTTLInfo`:** Use `IsInfinite: true` for content that rarely changes or is invalidated manually (e.g., sitemaps, global configuration data). Use `false` (with appropriate `CacheL1/L2DefaultTTL`) for dynamic content that benefits from temporary caching.
+*   **Generator Functions:** Keep them focused on data fetching and content creation. Log within them if necessary. They should be idempotent if possible.
+*   **Selective Warmup:** Only warmup critical or frequently accessed pages/resources to avoid excessive startup load.
+*   **Configuration:** Prefer environment variables for deployment-specific settings (port, TTLs, secrets). Use the `Config` struct for application defaults and structural configuration.
+*   **Middleware Order:** Remember that middleware order is crucial in Fiber. Typically, your 404 handler and `app.Static` middleware should be registered last.
+*   **Security for Cache Control:** If you expose endpoints to trigger `server.Invalidate()` or `server.Flush()` (e.g., for admin purposes), **these endpoints MUST be strongly secured** with authentication and authorization.
 
 ---
 
-## 13. Troubleshooting
+## 7. Troubleshooting
 
-*   **Erreurs "Directory not writable"**: Vérifiez les permissions de `CacheDir` et `PublicDir`.
-*   **Assets non trouvés (404)**:
-    *   Vérifiez que `app.Static("/", cfg.PublicDir)` est correctement configuré et appelé *après* les routes spécifiques qui pourraient avoir des conflits de préfixe.
-    *   Vérifiez le contenu de `PublicDir` après le démarrage.
-*   **Cache non invalidé / contenu périmé**:
-    *   Vérifiez les TTLs (`CacheL1DefaultTTL`, `CacheL2DefaultTTL`) et `IsInfinite`.
-    *   Vérifiez les logs pour les erreurs de cache L2 (métrique `webserver_cache_l2_set_errors_total`).
-*   **Problèmes CSRF (si activé manuellement)**:
-    *   Vérifiez la configuration du middleware CSRF.
-    *   Assurez-vous que le frontend envoie le token et que `KeyLookup` correspond.
-    *   Inspectez les cookies et headers.
-*   **Erreurs 503 / Health Check échoue**: Vérifiez les logs pour des erreurs BadgerDB. `CacheDir` doit être accessible.
-
----
-
-## 14. Roadmap Potentielle (Idées d'Évolution)
-
-*   Cache busting automatique pour les assets.
-*   Options de TTL de cache plus granulaires.
-*   Intégration OpenTelemetry.
-*   Health check personnalisable par l'application.
-*   Améliorations du `StaticProcessor` (ex: ne pas purger `PublicDir`, support SASS/TS).
+*   **"Directory not writable" errors at startup:** Check permissions for `Config.CacheDir` and `Config.PublicDir`. The server process needs write access.
+*   **Static Assets Not Found (404):**
+    *   Ensure `app.Static("/", cfg.PublicDir)` is correctly configured and typically called *after* specific application routes that might share URL prefixes.
+    *   Verify the contents of `Config.PublicDir` after server startup to confirm assets were processed.
+    *   Check that the requested URL doesn't match any `fiber.Static` exclusion patterns if you've configured them.
+*   **Cache Not Invalidating / Stale Content:**
+    *   Verify configured TTLs (`CacheL1DefaultTTL`, `CacheL2DefaultTTL`) and the `IsInfinite` flag used during `RenderPage`/`RenderBytesPage` or warmup registration.
+    *   Check server logs for L2 cache errors (Prometheus metric `webserver_cache_l2_set_errors_total` can also indicate issues).
+    *   When using `server.Invalidate(key)`, ensure the `key` exactly matches the one used for caching.
+*   **CSRF Issues (if manually enabled):**
+    *   Double-check your `csrf.Config` settings against `Config` values from BlitzKit-Go.
+    *   Ensure your frontend is sending the CSRF token correctly (matching `CSRFKeyLookup`).
+    *   Use browser developer tools to inspect cookies (`CSRFCookieName`) and request headers/form data.
+*   **503 Errors / Health Check Fails:** Check server logs for BadgerDB errors. Ensure `Config.CacheDir` is accessible and not corrupted.
 
 ---
 
-## 15. Glossaire
+## 8. Potential Roadmap / Future Enhancements
 
-*   **L1 Cache**: Cache en mémoire (`go-cache`).
-*   **L2 Cache**: Cache sur disque (BadgerDB).
-*   **Generator Function**: Fonction (`PageGeneratorFunc` ou `BytesGeneratorFunc`) produisant le contenu pour le cache.
-*   **RenderPage / RenderBytesPage**: Méthodes pour rendre du contenu avec cache.
-*   **Warmup**: Pré-remplissage du cache.
-*   **StaticProcessor**: Composant traitant les assets statiques au démarrage.
-*   **slog**: Librairie de logging structuré de Go.
-*   **Fiber**: Framework web Go.
-*   **Templ**: Moteur de template Go (supporté via `templ.Component`).
+*   Automatic cache busting for static assets (e.g., appending content hashes to filenames).
+*   More granular cache TTL options (e.g., per-key prefix or as an option to render methods).
+*   OpenTelemetry integration for distributed tracing.
+*   Allow applications to register custom health checks.
+*   Further improvements to `StaticProcessor` (e.g., option not to purge `PublicDir`, support for SASS/TypeScript pre-processing).
+
+---
