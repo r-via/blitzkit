@@ -1,4 +1,4 @@
-// File: pkg/blitzkit/monitoring.go
+// File: monitoring.go
 // Description: Gère la configuration et l'exposition des métriques Prometheus
 //
 //	et du point de terminaison de contrôle de santé (/health).

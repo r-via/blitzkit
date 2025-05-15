@@ -1,4 +1,4 @@
-// File: pkg/blitzkit/server.go
+// File: server.go
 // Description: Définit la structure principale du serveur web (`Server`),
 //
 //	gère son initialisation, son démarrage, son arrêt propre,

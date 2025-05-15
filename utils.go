@@ -1,4 +1,4 @@
-// File: pkg/blitzkit/utils.go
+// File: utils.go
 // Description: Fournit diverses fonctions utilitaires pour le package blitzkit,
 //
 //	telles que l'extraction d'IP client, la gestion des valeurs par défaut,

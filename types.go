@@ -1,4 +1,4 @@
-// File: pkg/blitzkit/types.go
+// File: types.go
 // Description: Définit les types de données et interfaces utilisés par le package blitzkit,
 //
 //	y compris la structure de configuration `Config`, les types de fonctions
