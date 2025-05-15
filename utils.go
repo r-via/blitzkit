@@ -1,9 +1,9 @@
-// File: pkg/webserver/utils.go
-// Description: Fournit diverses fonctions utilitaires pour le package webserver,
+// File: pkg/blitzkitgo/utils.go
+// Description: Fournit diverses fonctions utilitaires pour le package blitzkitgo,
 //
 //	telles que l'extraction d'IP client, la gestion des valeurs par défaut,
 //	la vérification de répertoires, et la détection des requêtes JSON.
-package webserver
+package blitzkitgo
 
 import (
 	"errors"

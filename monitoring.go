@@ -1,8 +1,8 @@
-// File: pkg/webserver/monitoring.go
+// File: pkg/blitzkitgo/monitoring.go
 // Description: Gère la configuration et l'exposition des métriques Prometheus
 //
 //	et du point de terminaison de contrôle de santé (/health).
-package webserver
+package blitzkitgo
 
 import (
 	"errors"
@@ -80,7 +80,7 @@ func setupMonitoring(app *fiber.App, cfg Config, logger *slog.Logger, db *badger
 	if cfg.EnableMetrics {
 		initMetrics(logger)
 
-		fiberProm := fiberprometheus.New("webserver_app")
+		fiberProm := fiberprometheus.New("blitzkitgo_app")
 		fiberProm.RegisterAt(app, "/metrics")
 		app.Use(fiberProm.Middleware)
 		logger.Info("Prometheus metrics enabled", "path", "/metrics")
@@ -99,21 +99,21 @@ func setupMonitoring(app *fiber.App, cfg Config, logger *slog.Logger, db *badger
 func initMetrics(logger *slog.Logger) {
 	if metricsInitialized.CompareAndSwap(false, true) {
 		logger.Debug("Initializing Prometheus metrics collectors...")
-		cacheL1Hits = promauto.NewCounter(prometheus.CounterOpts{Name: "webserver_cache_l1_hits_total", Help: "Total L1 cache hits."})
-		cacheL1Misses = promauto.NewCounter(prometheus.CounterOpts{Name: "webserver_cache_l1_misses_total", Help: "Total L1 cache misses."})
-		cacheL1Sets = promauto.NewCounter(prometheus.CounterOpts{Name: "webserver_cache_l1_sets_total", Help: "Total items set in L1 cache."})
-		cacheL1LoadedFromL2 = promauto.NewCounter(prometheus.CounterOpts{Name: "webserver_cache_l1_loaded_from_l2_total", Help: "Total items loaded into L1 from L2."})
-		cacheL2Hits = promauto.NewCounter(prometheus.CounterOpts{Name: "webserver_cache_l2_hits_total", Help: "Total L2 cache hits."})
-		cacheL2Misses = promauto.NewCounter(prometheus.CounterOpts{Name: "webserver_cache_l2_misses_total", Help: "Total L2 cache misses (incl. not found, unmarshal errors, db errors)."})
-		cacheL2Sets = promauto.NewCounter(prometheus.CounterOpts{Name: "webserver_cache_l2_sets_total", Help: "Total items successfully set in L2 cache."})
-		cacheL2SetErrors = promauto.NewCounter(prometheus.CounterOpts{Name: "webserver_cache_l2_set_errors_total", Help: "Total errors setting items in L2 cache."})
-		cacheInvalidations = promauto.NewCounter(prometheus.CounterOpts{Name: "webserver_cache_invalidations_total", Help: "Total successful cache invalidations."})
-		cacheInvalidationErrors = promauto.NewCounter(prometheus.CounterOpts{Name: "webserver_cache_invalidation_errors_total", Help: "Total errors during cache invalidation."})
-		cacheWarmupSkipped = promauto.NewCounter(prometheus.CounterOpts{Name: "webserver_cache_warmup_skipped_total", Help: "Total items skipped during cache warmup (already in L1)."})
-		cacheWarmupErrors = promauto.NewCounter(prometheus.CounterOpts{Name: "webserver_cache_warmup_errors_total", Help: "Total errors during cache warmup generation/render/store."})
-		cacheWarmupDuration = promauto.NewHistogram(prometheus.HistogramOpts{Name: "webserver_cache_warmup_item_duration_seconds", Help: "Duration to warm up individual cache items.", Buckets: prometheus.DefBuckets})
-		cacheWarmupTotalDuration = promauto.NewGauge(prometheus.GaugeOpts{Name: "webserver_cache_warmup_total_duration_seconds", Help: "Total duration of the last cache warmup process."})
-		pageGenerationDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{Name: "webserver_page_generation_duration_seconds", Help: "Duration to generate page/byte content (cache miss).", Buckets: prometheus.DefBuckets}, []string{"cache_key"})
+		cacheL1Hits = promauto.NewCounter(prometheus.CounterOpts{Name: "blitzkitgo_cache_l1_hits_total", Help: "Total L1 cache hits."})
+		cacheL1Misses = promauto.NewCounter(prometheus.CounterOpts{Name: "blitzkitgo_cache_l1_misses_total", Help: "Total L1 cache misses."})
+		cacheL1Sets = promauto.NewCounter(prometheus.CounterOpts{Name: "blitzkitgo_cache_l1_sets_total", Help: "Total items set in L1 cache."})
+		cacheL1LoadedFromL2 = promauto.NewCounter(prometheus.CounterOpts{Name: "blitzkitgo_cache_l1_loaded_from_l2_total", Help: "Total items loaded into L1 from L2."})
+		cacheL2Hits = promauto.NewCounter(prometheus.CounterOpts{Name: "blitzkitgo_cache_l2_hits_total", Help: "Total L2 cache hits."})
+		cacheL2Misses = promauto.NewCounter(prometheus.CounterOpts{Name: "blitzkitgo_cache_l2_misses_total", Help: "Total L2 cache misses (incl. not found, unmarshal errors, db errors)."})
+		cacheL2Sets = promauto.NewCounter(prometheus.CounterOpts{Name: "blitzkitgo_cache_l2_sets_total", Help: "Total items successfully set in L2 cache."})
+		cacheL2SetErrors = promauto.NewCounter(prometheus.CounterOpts{Name: "blitzkitgo_cache_l2_set_errors_total", Help: "Total errors setting items in L2 cache."})
+		cacheInvalidations = promauto.NewCounter(prometheus.CounterOpts{Name: "blitzkitgo_cache_invalidations_total", Help: "Total successful cache invalidations."})
+		cacheInvalidationErrors = promauto.NewCounter(prometheus.CounterOpts{Name: "blitzkitgo_cache_invalidation_errors_total", Help: "Total errors during cache invalidation."})
+		cacheWarmupSkipped = promauto.NewCounter(prometheus.CounterOpts{Name: "blitzkitgo_cache_warmup_skipped_total", Help: "Total items skipped during cache warmup (already in L1)."})
+		cacheWarmupErrors = promauto.NewCounter(prometheus.CounterOpts{Name: "blitzkitgo_cache_warmup_errors_total", Help: "Total errors during cache warmup generation/render/store."})
+		cacheWarmupDuration = promauto.NewHistogram(prometheus.HistogramOpts{Name: "blitzkitgo_cache_warmup_item_duration_seconds", Help: "Duration to warm up individual cache items.", Buckets: prometheus.DefBuckets})
+		cacheWarmupTotalDuration = promauto.NewGauge(prometheus.GaugeOpts{Name: "blitzkitgo_cache_warmup_total_duration_seconds", Help: "Total duration of the last cache warmup process."})
+		pageGenerationDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{Name: "blitzkitgo_page_generation_duration_seconds", Help: "Duration to generate page/byte content (cache miss).", Buckets: prometheus.DefBuckets}, []string{"cache_key"})
 
 		logger.Debug("Prometheus metrics collectors initialized.")
 	} else {

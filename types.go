@@ -1,9 +1,9 @@
-// File: pkg/webserver/types.go
-// Description: Définit les types de données et interfaces utilisés par le package webserver,
+// File: pkg/blitzkitgo/types.go
+// Description: Définit les types de données et interfaces utilisés par le package blitzkitgo,
 //
 //	y compris la structure de configuration `Config`, les types de fonctions
 //	pour les générateurs de cache, et les types liés au préchauffage du cache.
-package webserver
+package blitzkitgo
 
 import (
 	"log/slog"
