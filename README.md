@@ -61,7 +61,7 @@ Designed to be configurable yet "batteries-included" for core infrastructure, Bl
 ### 2.2 Installation
 Install BlitzKit-Go into your project:
 ```bash
-go get github.com/your-username/blitzkit-go # Replace with the actual import path
+go get github.com/r-via/blitzkit-gos
 go mod tidy
 ```
 
@@ -88,8 +88,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/csrf"    // For CSRF protection
 	"github.com/gofiber/fiber/v2/middleware/limiter" // For Rate Limiting
 
-	// Replace with the actual import path for BlitzKit-Go
-	"github.com/your-username/blitzkit-go/webserver"
+	"github.com/r-via/blitzkit-go/webserver"
 )
 
 // --- Page Generators ---
