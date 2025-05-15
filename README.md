@@ -4,8 +4,11 @@
 <img src="assets/imgs/logo.jpg" alt="Logo">
 </p>
 
+
 **Version:** (e.g., v1.0.0)
+
 **Go Version Required:** 1.21+ (primarily for `slog`)
+
 **Repository:** `github.com/remi-viau/blitzkit-go`
 
 ## 1. Overview
