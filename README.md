@@ -1,21 +1,16 @@
-# BlitzKit-Go: High-Performance Go Web Framework Foundation
+# BlitzKit: High-Performance Go Web Framework Foundation
 
 <p align="center">
 <img src="assets/imgs/logo.jpg" alt="Logo">
 </p>
 
-
-**Version:** (e.g., v1.0.0)
-
-**Go Version Required:** 1.21+ (primarily for `slog`)
-
-**Repository:** `github.com/r-via/blitzkit-go`
+**Repository:** `github.com/r-via/blitzkit`
 
 ## 1. Overview
 
-**BlitzKit-Go** is a high-performance, reusable toolkit for building modern web applications in Go. Leveraging the speed and efficiency of the **Fiber v2** web framework, BlitzKit-Go provides a solid foundation by integrating essential features such as an intelligent L1/L2 caching system (in-memory & BadgerDB), optimized static asset processing, structured `slog` logging, and Prometheus monitoring capabilities.
+**BlitzKit** is a high-performance, reusable toolkit for building modern web applications in Go. Leveraging the speed and efficiency of the **Fiber v2** web framework, BlitzKit provides a solid foundation by integrating essential features such as an intelligent L1/L2 caching system (in-memory & BadgerDB), optimized static asset processing, structured `slog` logging, and Prometheus monitoring capabilities.
 
-Designed to be configurable yet "batteries-included" for core infrastructure, BlitzKit-Go handles common web server complexities, allowing developers to focus on business logic and application-specific routing.
+Designed to be configurable yet "batteries-included" for core infrastructure, BlitzKit handles common web server complexities, allowing developers to focus on business logic and application-specific routing.
 
 **Key Features:**
 
@@ -59,9 +54,9 @@ Designed to be configurable yet "batteries-included" for core infrastructure, Bl
 *   (Optional) Templ CLI installed if you are using Templ for HTML generation: `go install github.com/a-h/templ/cmd/templ@latest`.
 
 ### 2.2 Installation
-Install BlitzKit-Go into your project:
+Install BlitzKit into your project:
 ```bash
-go get github.com/r-via/blitzkit-gos
+go get github.com/r-via/blitzkit@v0.1.4 # Or your desired version
 go mod tidy
 ```
 
@@ -88,7 +83,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/csrf"    // For CSRF protection
 	"github.com/gofiber/fiber/v2/middleware/limiter" // For Rate Limiting
 
-	"github.com/r-via/blitzkit-go/blitzkit"
+	"github.com/r-via/blitzkit" // Import BlitzKit directly
 )
 
 // --- Page Generators ---
@@ -108,7 +103,7 @@ func SitemapGenerator(server *blitzkit.Server) blitzkit.BytesGeneratorFunc {
 	return func() ([]byte, int64, error) {
 		server.GetLogger().Info("Generating sitemap.xml")
 		now := time.Now()
-		entries := []blitzkit.SitemapEntry{
+		entries := []blitzkit.SitemapEntry{ // Assuming SitemapEntry is part of the blitzkit package
 			{URL: "https://example.com/", LastMod: &now, ChangeFreq: blitzkit.SitemapChangeFreqDaily, Priority: 1.0},
 			{URL: "https://example.com/about", LastMod: &now, ChangeFreq: blitzkit.SitemapChangeFreqMonthly, Priority: 0.8},
 			// Add more entries dynamically based on your content
@@ -138,17 +133,17 @@ func CustomErrorComponentGenerator(isDevMode bool) blitzkit.ErrorComponentGenera
 
 // --- HTTP Handlers (using Fiber's standard signature) ---
 
-// homeHandler serves the home page using BlitzKit-Go's cached rendering.
+// homeHandler serves the home page using BlitzKit's cached rendering.
 func homeHandler(server *blitzkit.Server) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		cacheKey := "home"
 		// Use a default TTL from config (IsInfinite: false)
 		return server.RenderPage(c, cacheKey, blitzkit.CacheTTLInfo{IsInfinite: false},
-			HomePageGenerator(server, "Welcome to BlitzKit-Go!"))
+			HomePageGenerator(server, "Welcome to BlitzKit!"))
 	}
 }
 
-// sitemapHandler serves the sitemap.xml using BlitzKit-Go's cached byte rendering.
+// sitemapHandler serves the sitemap.xml using BlitzKit's cached byte rendering.
 func sitemapHandler(server *blitzkit.Server) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		cacheKey := "sitemap.xml"
@@ -180,7 +175,7 @@ func adminInvalidateCacheHandler(server *blitzkit.Server) fiber.Handler {
 // notFoundHandler serves a custom 404 page.
 func notFoundHandler(server *blitzkit.Server) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		// The default ErrorHandler in BlitzKit-Go will try to use ErrorComponentGenerator
+		// The default ErrorHandler in BlitzKit will try to use ErrorComponentGenerator
 		// if the error is a fiber.Error with status 404.
 		// So, we just need to return the fiber.ErrNotFound.
 		return fiber.ErrNotFound // This will be caught by server.handleError
@@ -241,7 +236,7 @@ func main() {
 	// --- 3. Server Initialization ---
 	server, err := blitzkit.NewServer(cfg)
 	if err != nil {
-		logger.Error("Failed to initialize BlitzKit-Go server", "error", err)
+		logger.Error("Failed to initialize BlitzKit server", "error", err)
 		os.Exit(1)
 	}
 
@@ -249,7 +244,7 @@ func main() {
 
 	// --- 4. Configure Middlewares (e.g., CSRF, Rate Limiter) ---
 	// These are added manually using the configuration from `cfg`.
-	// BlitzKit-Go's base middlewares (recover, CORS, request logging, security headers) are already set up.
+	// BlitzKit's base middlewares (recover, CORS, request logging, security headers) are already set up.
 	if cfg.EnableCSRF {
 		app.Use(csrf.New(csrf.Config{
 			KeyLookup:      cfg.CSRFKeyLookup,
@@ -337,7 +332,7 @@ func main() {
 
 	// --- 9. Start Server and Handle Graceful Shutdown ---
 	go func() {
-		logger.Info("Starting BlitzKit-Go server...", "address", fmt.Sprintf(":%s", cfg.Port))
+		logger.Info("Starting BlitzKit server...", "address", fmt.Sprintf(":%s", cfg.Port))
 		if err := server.Start(); err != nil {
 			// http.ErrServerClosed is expected on graceful shutdown
 			if err.Error() != "http: Server closed" {
@@ -352,11 +347,11 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit // Block until a signal is received
 
-	logger.Info("Shutdown signal received. Shutting down BlitzKit-Go server gracefully...")
+	logger.Info("Shutdown signal received. Shutting down BlitzKit server gracefully...")
 
 	// Perform server shutdown (closes Fiber app & L2 cache)
-	shutdownTimeout := 30 * time.Second // Give it 30 seconds to shutdown
-	if err := server.Shutdown(); err != nil { // server.Shutdown itself has a timeout
+	// shutdownTimeout := 30 * time.Second // server.Shutdown() already has an internal timeout
+	if err := server.Shutdown(); err != nil {
 		logger.Error("Server shutdown failed", "error", err)
 		os.Exit(1) // Exit with an error code
 	}
@@ -383,7 +378,7 @@ The `blitzkit.Config` struct allows fine-grained control over the server's behav
 | `CacheDir`                | `string`                      | `""`                     |                         | Absolute/relative path for BadgerDB L2 cache. If empty, L2 is disabled. Must be writable.                                               |
 | `SourcesDir`              | `string`                      | `""`                     |                         | Path to CSS/JS source files for minification.                                                                                          |
 | `StaticsDir`              | `string`                      | `""`                     |                         | Path to static assets (images, fonts) to be copied directly to `PublicDir`.                                                            |
-| `ErrorHandler`            | `func(c *fiber.Ctx, err error) error` | (internal `handleError`) |                         | Custom Fiber error handler. If `nil`, BlitzKit-Go's default `handleError` is used.                                                     |
+| `ErrorHandler`            | `func(c *fiber.Ctx, err error) error` | (internal `handleError`) |                         | Custom Fiber error handler. If `nil`, BlitzKit's default `handleError` is used.                                                     |
 | `NotFoundComponent`       | `templ.Component`             | `nil`                    |                         | Templ component for 404 errors (used by default `handleError` if no `ErrorComponentGenerator` and error is 404). Not used by a custom 404 handler. |
 | `ErrorComponentGenerator` | `ErrorComponentGenerator`     | `nil`                    |                         | `func(err error, code int, isDev bool) templ.Component` to generate custom error pages.                                                |
 | `CacheL1DefaultTTL`       | `time.Duration`               | `5m`                     | `CACHE_L1_DEFAULT_TTL`  | Default TTL for L1 cache items (if not `IsInfinite`).                                                                                  |
@@ -404,7 +399,7 @@ The `blitzkit.Config` struct allows fine-grained control over the server's behav
 | `CustomMiddlewares`       | `[]fiber.Handler`             | `nil`                    |                         | Slice of custom `fiber.Handler` middlewares to be added after base middlewares.                                                        |
 
 **Environment Variables:**
-BlitzKit-Go recognizes these environment variables to override `Config` defaults (see `NewServer` and `utils.go` for parsing logic):
+BlitzKit recognizes these environment variables to override `Config` defaults (see `NewServer` and `utils.go` for parsing logic):
 *   `PORT`
 *   `APP_ENV` (set to `"development"` for `DevMode`)
 *   `CACHE_L1_DEFAULT_TTL` (e.g., `"15m"`, `"1h"`)
@@ -424,7 +419,7 @@ BlitzKit-Go recognizes these environment variables to override `Config` defaults
 *   **`(*Server) Shutdown() error`**: Initiates a graceful shutdown of the Fiber server and closes the L2 cache.
 
 ### 4.2 Caching System
-The caching system is a core part of BlitzKit-Go, designed for performance.
+The caching system is a core part of BlitzKit, designed for performance.
 
 *   **`CacheEntry` struct:** Defines the structure stored in L1/L2 cache (`Data []byte`, `LastModified int64`, `ExpiresAt int64`).
 *   **`CacheTTLInfo` struct:** (`IsInfinite bool`) Specifies if a cache entry should have an "infinite" TTL (no time-based expiration, relying on manual invalidation or L1/L2 eviction policies). If `false`, `CacheL1DefaultTTL` and `CacheL2DefaultTTL` are used.
@@ -461,7 +456,7 @@ Executed once during `NewServer` initialization:
 Your application should then serve static files from `Config.PublicDir` using Fiber's `app.Static("/", cfg.PublicDir)` middleware.
 
 ### 4.4 Error Handling
-*   BlitzKit-Go sets up a default error handler (`server.handleError`) for the Fiber application.
+*   BlitzKit sets up a default error handler (`server.handleError`) for the Fiber application.
 *   It intercepts errors returned by handlers or from `c.Next(err)`.
 *   **Logic:**
     1.  Determines HTTP status code (defaults to 500, uses `fiber.Error.Code` if available).
@@ -490,7 +485,7 @@ Your application should then serve static files from `Config.PublicDir` using Fi
 *   **Prometheus Metrics (`Config.EnableMetrics: true`):**
     *   Endpoint: `/metrics`.
     *   Uses `github.com/ansrivas/fiberprometheus/v2` for Fiber metrics.
-    *   Custom BlitzKit-Go metrics (see `monitoring.go` for full list):
+    *   Custom BlitzKit metrics (see `monitoring.go` for full list, prefixed with `blitzkit_`):
         *   Cache L1/L2: `hits`, `misses`, `sets`, `l1_loaded_from_l2`, `l2_set_errors`.
         *   Invalidation: `invalidations_total`, `invalidation_errors_total`.
         *   Warmup: `warmup_skipped_total`, `warmup_errors_total`, `warmup_item_duration_seconds` (histogram), `warmup_total_duration_seconds` (gauge).
@@ -563,7 +558,7 @@ Your application should then serve static files from `Config.PublicDir` using Fi
     *   Check server logs for L2 cache errors (Prometheus metric `blitzkit_cache_l2_set_errors_total` can also indicate issues).
     *   When using `server.Invalidate(key)`, ensure the `key` exactly matches the one used for caching.
 *   **CSRF Issues (if manually enabled):**
-    *   Double-check your `csrf.Config` settings against `Config` values from BlitzKit-Go.
+    *   Double-check your `csrf.Config` settings against `Config` values from BlitzKit.
     *   Ensure your frontend is sending the CSRF token correctly (matching `CSRFKeyLookup`).
     *   Use browser developer tools to inspect cookies (`CSRFCookieName`) and request headers/form data.
 *   **503 Errors / Health Check Fails:** Check server logs for BadgerDB errors. Ensure `Config.CacheDir` is accessible and not corrupted.
