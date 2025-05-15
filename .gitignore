@@ -1,0 +1,113 @@
+# ============================================================
+# == Fichier template .gitignore ==
+# ============================================================
+# Maintenu dans env-starter/template.gitignore
+# Appliquer aux projets via un script ou manuellement.
+
+# --- OS / Editeur / IDE ---
+.DS_Store
+*~
+*.swp
+._*
+Thumbs.db
+.vscode/
+.idea/
+*.sublime-*
+nbproject/
+
+# --- Logs ---
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log.[0-9]
+lerna-debug.log
+
+# --- Répertoires de Dépendances ---
+# node_modules: Ignoré PARTOUT dans le projet
+node_modules/
+
+# vendor, vendors, bower_components: Typiquement à la racine
+/vendor/
+/vendors/
+/bower_components/
+
+# --- Fichiers/Dossiers de Build Communs ---
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+# Dossier de build Go commun à la racine
+/build/
+
+# Web / Frontend / Autres (souvent à la racine)
+/dist/
+/public/
+
+# Dossiers temporaires ou www (ignorés PARTOUT)
+tmp/
+temp/
+www/
+
+# --- Fichiers de Configuration Locaux / Secrets ---
+# NE JAMAIS commiter de secrets !
+.env
+.env.*
+# Permet de commiter le fichier d'exemple
+!.env.example
+
+config.local.*
+secrets.*
+*.pem
+*.key
+
+# --- Fichiers Générés par ce Workspace ---
+compiled.*
+# Pattern spécifique des fichiers config générés
+config.compiled.*.yaml
+
+# --- Bases de Données Locales ---
+# BadgerDB (si à la racine)
+# Si nommé différemment ('data', 'db') ou dans un sous-dossier,
+# ajouter la règle spécifique au .gitignore du projet.
+/badger/
+
+# --- Python (si utilisé dans certains projets) ---
+#__pycache__/
+#*.py[cod]
+#*$py.class
+#.Python
+#env/
+#venv/
+#ENV/
+#lib/
+#lib64/
+#include/
+#share/
+#bin/
+#.eggs/
+#parts/
+#var/
+#wheels/
+#pip-wheel-metadata/
+#.installed.cfg
+#*.egg-info/
+#.pytest_cache/
+#.coverage
+#.python-version
+
+# --- Docker ---
+#.dockerignore
+#docker-compose.override.yml
+
+# --- Divers ---
+*.pid
+*.seed
+*.pid.lock
+
+# --- Ajoutez ici d'autres règles génériques pertinentes ---
