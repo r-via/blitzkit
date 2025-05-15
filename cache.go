@@ -1,9 +1,9 @@
-// File: pkg/blitzkitgo/cache.go
+// File: pkg/blitzkit/cache.go
 // Description: Gère la mise en cache à deux niveaux (L1 en mémoire, L2 sur disque via BadgerDB).
 //
 //	Inclut l'initialisation, la fermeture, la gestion du cycle de vie (GC)
 //	et l'adaptation du logger BadgerDB à slog.
-package blitzkitgo
+package blitzkit
 
 import (
 	"errors"

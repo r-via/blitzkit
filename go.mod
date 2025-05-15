@@ -1,4 +1,4 @@
-module github.com/r-via/blitzkit-go
+module github.com/r-via/blitzkit
 
 go 1.23.5
 

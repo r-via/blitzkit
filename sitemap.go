@@ -1,8 +1,8 @@
-// File: pkg/blitzkitgo/sitemap.go
+// File: pkg/blitzkit/sitemap.go
 // Description: Fournit les structures et fonctions nécessaires pour générer
 //
 //	un fichier sitemap.xml conforme au protocole sitemap standard.
-package blitzkitgo
+package blitzkit
 
 import (
 	"bytes"

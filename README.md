@@ -88,13 +88,13 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/csrf"    // For CSRF protection
 	"github.com/gofiber/fiber/v2/middleware/limiter" // For Rate Limiting
 
-	"github.com/r-via/blitzkit-go/blitzkitgo"
+	"github.com/r-via/blitzkit-go/blitzkit"
 )
 
 // --- Page Generators ---
 
 // HomePageGenerator creates the home page component.
-func HomePageGenerator(server *blitzkitgo.Server, title string) blitzkitgo.PageGeneratorFunc {
+func HomePageGenerator(server *blitzkit.Server, title string) blitzkit.PageGeneratorFunc {
 	return func() (templ.Component, int64, error) {
 		server.GetLogger().Info("Generating component for home page", "title", title)
 		// In a real app, you might fetch data here.
@@ -104,22 +104,22 @@ func HomePageGenerator(server *blitzkitgo.Server, title string) blitzkitgo.PageG
 }
 
 // SitemapGenerator creates the sitemap.xml content.
-func SitemapGenerator(server *blitzkitgo.Server) blitzkitgo.BytesGeneratorFunc {
+func SitemapGenerator(server *blitzkit.Server) blitzkit.BytesGeneratorFunc {
 	return func() ([]byte, int64, error) {
 		server.GetLogger().Info("Generating sitemap.xml")
 		now := time.Now()
-		entries := []blitzkitgo.SitemapEntry{
-			{URL: "https://example.com/", LastMod: &now, ChangeFreq: blitzkitgo.SitemapChangeFreqDaily, Priority: 1.0},
-			{URL: "https://example.com/about", LastMod: &now, ChangeFreq: blitzkitgo.SitemapChangeFreqMonthly, Priority: 0.8},
+		entries := []blitzkit.SitemapEntry{
+			{URL: "https://example.com/", LastMod: &now, ChangeFreq: blitzkit.SitemapChangeFreqDaily, Priority: 1.0},
+			{URL: "https://example.com/about", LastMod: &now, ChangeFreq: blitzkit.SitemapChangeFreqMonthly, Priority: 0.8},
 			// Add more entries dynamically based on your content
 		}
-		xmlBytes, err := blitzkitgo.GenerateSitemapXMLBytes(entries)
+		xmlBytes, err := blitzkit.GenerateSitemapXMLBytes(entries)
 		return xmlBytes, now.Unix(), err
 	}
 }
 
 // ErrorPageGenerator creates a custom error page component.
-func CustomErrorComponentGenerator(isDevMode bool) blitzkitgo.ErrorComponentGenerator {
+func CustomErrorComponentGenerator(isDevMode bool) blitzkit.ErrorComponentGenerator {
 	return func(err error, code int, isDev bool) templ.Component {
 		errMsg := "An unexpected error occurred."
 		if fe, ok := err.(*fiber.Error); ok {
@@ -139,29 +139,29 @@ func CustomErrorComponentGenerator(isDevMode bool) blitzkitgo.ErrorComponentGene
 // --- HTTP Handlers (using Fiber's standard signature) ---
 
 // homeHandler serves the home page using BlitzKit-Go's cached rendering.
-func homeHandler(server *blitzkitgo.Server) fiber.Handler {
+func homeHandler(server *blitzkit.Server) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		cacheKey := "home"
 		// Use a default TTL from config (IsInfinite: false)
-		return server.RenderPage(c, cacheKey, blitzkitgo.CacheTTLInfo{IsInfinite: false},
+		return server.RenderPage(c, cacheKey, blitzkit.CacheTTLInfo{IsInfinite: false},
 			HomePageGenerator(server, "Welcome to BlitzKit-Go!"))
 	}
 }
 
 // sitemapHandler serves the sitemap.xml using BlitzKit-Go's cached byte rendering.
-func sitemapHandler(server *blitzkitgo.Server) fiber.Handler {
+func sitemapHandler(server *blitzkit.Server) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		cacheKey := "sitemap.xml"
 		contentType := fiber.MIMEApplicationXMLCharsetUTF8 // Use Fiber's constants
 		// Sitemap changes infrequently, good candidate for effectively infinite cache
-		return server.RenderBytesPage(c, cacheKey, contentType, blitzkitgo.CacheTTLInfo{IsInfinite: true},
+		return server.RenderBytesPage(c, cacheKey, contentType, blitzkit.CacheTTLInfo{IsInfinite: true},
 			SitemapGenerator(server))
 	}
 }
 
 // adminInvalidateCacheHandler (example for programmatic cache invalidation)
 // IMPORTANT: This endpoint MUST be secured in a real application (e.g., auth middleware).
-func adminInvalidateCacheHandler(server *blitzkitgo.Server) fiber.Handler {
+func adminInvalidateCacheHandler(server *blitzkit.Server) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		keyToInvalidate := c.Query("key")
 		if keyToInvalidate == "" {
@@ -178,7 +178,7 @@ func adminInvalidateCacheHandler(server *blitzkitgo.Server) fiber.Handler {
 }
 
 // notFoundHandler serves a custom 404 page.
-func notFoundHandler(server *blitzkitgo.Server) fiber.Handler {
+func notFoundHandler(server *blitzkit.Server) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		// The default ErrorHandler in BlitzKit-Go will try to use ErrorComponentGenerator
 		// if the error is a fiber.Error with status 404.
@@ -201,8 +201,8 @@ func main() {
 	slog.SetDefault(logger) // Optional: set as global default logger
 
 	// --- 2. Configuration ---
-	cfg := blitzkitgo.Config{
-		Port:              blitzkitgo.GetEnvOrDefault(logger, "PORT", "", "8080"),
+	cfg := blitzkit.Config{
+		Port:              blitzkit.GetEnvOrDefault(logger, "PORT", "", "8080"),
 		DevMode:           isDev,
 		Logger:            logger, // Inject our configured logger
 		SourcesDir:        "./webroot/sources",   // CSS/JS source files for minification
@@ -239,7 +239,7 @@ func main() {
 	}
 
 	// --- 3. Server Initialization ---
-	server, err := blitzkitgo.NewServer(cfg)
+	server, err := blitzkit.NewServer(cfg)
 	if err != nil {
 		logger.Error("Failed to initialize BlitzKit-Go server", "error", err)
 		os.Exit(1)
@@ -260,7 +260,7 @@ func main() {
 			//  // Example: skip CSRF for API routes
 			// 	return strings.HasPrefix(c.Path(), "/api/")
 			// },
-			ContextKey: blitzkitgo.CSRFContextKey, // Makes CSRF token available via c.Locals(blitzkitgo.CSRFContextKey)
+			ContextKey: blitzkit.CSRFContextKey, // Makes CSRF token available via c.Locals(blitzkit.CSRFContextKey)
 		}))
 		logger.Info("CSRF Protection Middleware enabled.")
 	}
@@ -270,7 +270,7 @@ func main() {
 			Max:        cfg.RateLimiterMax,
 			Expiration: cfg.RateLimiterExpiration,
 			KeyGenerator: func(c *fiber.Ctx) string {
-				return blitzkitgo.GetClientIP(c.Get(fiber.HeaderXForwardedFor), c.IP())
+				return blitzkit.GetClientIP(c.Get(fiber.HeaderXForwardedFor), c.IP())
 			},
 			// LimitReached: func(c *fiber.Ctx) error {
 			// 	 return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{"error": "Too many requests"})
@@ -317,9 +317,9 @@ func main() {
 
 	// --- 7. Cache Warmup (Optional) ---
 	// Register items for warmup
-	server.RegisterForPageWarmup("home", blitzkitgo.CacheTTLInfo{IsInfinite: false},
+	server.RegisterForPageWarmup("home", blitzkit.CacheTTLInfo{IsInfinite: false},
 		HomePageGenerator(server, "Welcome! (Warmed Up)"))
-	server.RegisterForBytesWarmup("sitemap.xml", blitzkitgo.CacheTTLInfo{IsInfinite: true},
+	server.RegisterForBytesWarmup("sitemap.xml", blitzkit.CacheTTLInfo{IsInfinite: true},
 		SitemapGenerator(server))
 
 	// Execute warmup in a goroutine to avoid blocking server startup
@@ -367,9 +367,9 @@ func main() {
 
 ---
 
-## 3. Configuration (`blitzkitgo.Config`)
+## 3. Configuration (`blitzkit.Config`)
 
-The `blitzkitgo.Config` struct allows fine-grained control over the server's behavior.
+The `blitzkit.Config` struct allows fine-grained control over the server's behavior.
 
 | Field                     | Type                          | Default (in `NewServer`) | Env Var Override        | Description                                                                                                                            |
 | :------------------------ | :---------------------------- | :----------------------- | :---------------------- | :------------------------------------------------------------------------------------------------------------------------------------- |
@@ -418,7 +418,7 @@ BlitzKit-Go recognizes these environment variables to override `Config` defaults
 ## 4. Core Components & API
 
 ### 4.1 Server Lifecycle
-*   **`blitzkitgo.NewServer(cfg Config) (*Server, error)`**: Initializes and returns a new `*Server` instance. This is the primary entry point. It sets up logging, caching, static processing, base middlewares, and monitoring.
+*   **`blitzkit.NewServer(cfg Config) (*Server, error)`**: Initializes and returns a new `*Server` instance. This is the primary entry point. It sets up logging, caching, static processing, base middlewares, and monitoring.
 *   **`(*Server) App() *fiber.App`**: Returns the underlying `*fiber.App` instance. Use this to register your application routes, specific middlewares, etc.
 *   **`(*Server) Start() error`**: Starts the Fiber HTTP server. This is a blocking call.
 *   **`(*Server) Shutdown() error`**: Initiates a graceful shutdown of the Fiber server and closes the L2 cache.
@@ -468,11 +468,11 @@ Your application should then serve static files from `Config.PublicDir` using Fi
     2.  Logs the error with request details (path, method, IP, original error).
     3.  Sets the response status code.
     4.  **Response Formatting:**
-        *   If `blitzkitgo.WantsJSON(c)` is true (client `Accept` header contains `application/json`): Sends a JSON response: `{"error": "message"}`. In `DevMode`, internal error details might be included.
+        *   If `blitzkit.WantsJSON(c)` is true (client `Accept` header contains `application/json`): Sends a JSON response: `{"error": "message"}`. In `DevMode`, internal error details might be included.
         *   Else, if `Config.ErrorComponentGenerator` is provided: Attempts to render the `templ.Component` returned by this generator.
         *   Else (fallback): Sends a plain text response: `<code>: <message>`.
         *   In production (`!DevMode`), 5xx error messages are generic ("Internal Server Error").
-*   **`blitzkitgo.ErrorComponentGenerator` type:** `func(err error, code int, isDev bool) templ.Component`. Allows you to provide a function that generates a `templ.Component` for displaying error pages.
+*   **`blitzkit.ErrorComponentGenerator` type:** `func(err error, code int, isDev bool) templ.Component`. Allows you to provide a function that generates a `templ.Component` for displaying error pages.
 
 ### 4.5 Middlewares
 **Base Middlewares (Applied Automatically by `NewServer`):**
@@ -483,7 +483,7 @@ Your application should then serve static files from `Config.PublicDir` using Fi
 *   **Custom Middlewares:** Any `fiber.Handler`s provided in `Config.CustomMiddlewares` are added.
 
 **Optional Middlewares (Manual Setup Required by User):**
-*   **CSRF Protection:** If `Config.EnableCSRF` is true, you should add Fiber's CSRF middleware using settings from `Config` (e.g., `CSRFKeyLookup`, `CSRFCookieName`). Use `blitzkitgo.CSRFContextKey` (`"csrf"`) as the `ContextKey` in `csrf.Config` to make the token accessible via `c.Locals(blitzkitgo.CSRFContextKey)`.
+*   **CSRF Protection:** If `Config.EnableCSRF` is true, you should add Fiber's CSRF middleware using settings from `Config` (e.g., `CSRFKeyLookup`, `CSRFCookieName`). Use `blitzkit.CSRFContextKey` (`"csrf"`) as the `ContextKey` in `csrf.Config` to make the token accessible via `c.Locals(blitzkit.CSRFContextKey)`.
 *   **Rate Limiting:** If `Config.EnableRateLimiter` is true, add Fiber's Limiter middleware using settings from `Config` (e.g., `RateLimiterMax`, `RateLimiterExpiration`).
 
 ### 4.6 Monitoring
@@ -503,10 +503,10 @@ Your application should then serve static files from `Config.PublicDir` using Fi
     *   HTTP Status: `200 OK` if all checks pass, `503 Service Unavailable` if a critical component (like L2 cache) fails.
 
 ### 4.7 Utilities
-*   **`blitzkitgo.SitemapEntry` struct & `blitzkitgo.GenerateSitemapXMLBytes([]SitemapEntry) ([]byte, error)`**: For creating sitemap.xml content.
-*   **`blitzkitgo.GetClientIP(xForwardedFor, remoteAddr string) string`**: Extracts client IP, prioritizing `X-Forwarded-For`.
-*   **`blitzkitgo.WantsJSON(c *fiber.Ctx) bool`**: Checks if the request `Accept` header prefers JSON.
-*   **`blitzkitgo.GetEnvOrDefault(logger *slog.Logger, key, configValue, defaultValue string) string`**: Utility to fetch environment variables with fallbacks.
+*   **`blitzkit.SitemapEntry` struct & `blitzkit.GenerateSitemapXMLBytes([]SitemapEntry) ([]byte, error)`**: For creating sitemap.xml content.
+*   **`blitzkit.GetClientIP(xForwardedFor, remoteAddr string) string`**: Extracts client IP, prioritizing `X-Forwarded-For`.
+*   **`blitzkit.WantsJSON(c *fiber.Ctx) bool`**: Checks if the request `Accept` header prefers JSON.
+*   **`blitzkit.GetEnvOrDefault(logger *slog.Logger, key, configValue, defaultValue string) string`**: Utility to fetch environment variables with fallbacks.
 *   Other helpers in `utils.go` for directory management (`ensureDirExists`, `checkDirWritable`), default values (`defaultDuration`, `defaultInt`), and duration parsing (`parseDurationEnv`).
 
 ---
@@ -560,7 +560,7 @@ Your application should then serve static files from `Config.PublicDir` using Fi
     *   Check that the requested URL doesn't match any `fiber.Static` exclusion patterns if you've configured them.
 *   **Cache Not Invalidating / Stale Content:**
     *   Verify configured TTLs (`CacheL1DefaultTTL`, `CacheL2DefaultTTL`) and the `IsInfinite` flag used during `RenderPage`/`RenderBytesPage` or warmup registration.
-    *   Check server logs for L2 cache errors (Prometheus metric `blitzkitgo_cache_l2_set_errors_total` can also indicate issues).
+    *   Check server logs for L2 cache errors (Prometheus metric `blitzkit_cache_l2_set_errors_total` can also indicate issues).
     *   When using `server.Invalidate(key)`, ensure the `key` exactly matches the one used for caching.
 *   **CSRF Issues (if manually enabled):**
     *   Double-check your `csrf.Config` settings against `Config` values from BlitzKit-Go.

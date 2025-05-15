@@ -1,9 +1,9 @@
-// File: pkg/blitzkitgo/middleware.go
+// File: pkg/blitzkit/middleware.go
 // Description: Contient la configuration et l'enregistrement des middlewares de base
 //
 //	pour l'application Fiber, tels que Recover, CORS, les en-têtes de sécurité,
 //	et la journalisation des requêtes.
-package blitzkitgo
+package blitzkit
 
 import (
 	"context"

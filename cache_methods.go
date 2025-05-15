@@ -1,9 +1,9 @@
-// File: pkg/blitzkitgo/cache_methods.go
+// File: pkg/blitzkit/cache_methods.go
 // Description: Contient les méthodes du serveur web pour interagir avec le système de cache.
 //
 //	Inclut le rendu de pages HTML (templ) et de données binaires via le cache,
 //	l'invalidation et le vidage du cache.
-package blitzkitgo
+package blitzkit
 
 import (
 	"bytes"

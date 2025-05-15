@@ -1,9 +1,9 @@
-// File: pkg/blitzkitgo/utils.go
-// Description: Fournit diverses fonctions utilitaires pour le package blitzkitgo,
+// File: pkg/blitzkit/utils.go
+// Description: Fournit diverses fonctions utilitaires pour le package blitzkit,
 //
 //	telles que l'extraction d'IP client, la gestion des valeurs par défaut,
 //	la vérification de répertoires, et la détection des requêtes JSON.
-package blitzkitgo
+package blitzkit
 
 import (
 	"errors"

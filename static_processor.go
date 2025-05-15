@@ -1,9 +1,9 @@
-// File: pkg/blitzkitgo/static_processor.go
+// File: pkg/blitzkit/static_processor.go
 // Description: Gère le traitement des fichiers statiques (CSS, JS) au démarrage du serveur.
 //
 //	Inclut la minification des fichiers sources et la copie des fichiers statiques
 //	vers le répertoire public.
-package blitzkitgo
+package blitzkit
 
 import (
 	"errors"

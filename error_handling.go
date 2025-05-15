@@ -1,9 +1,9 @@
-// File: pkg/blitzkitgo/error_handling.go
+// File: pkg/blitzkit/error_handling.go
 // Description: Définit le gestionnaire d'erreurs centralisé pour l'application Fiber.
 //
 //	Il intercepte les erreurs, détermine le code de statut HTTP approprié,
 //	logue l'erreur, et renvoie une réponse formatée (HTML via composant Templ, JSON, ou texte brut).
-package blitzkitgo
+package blitzkit
 
 import (
 	"context"

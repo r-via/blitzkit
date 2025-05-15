@@ -1,9 +1,9 @@
-// File: pkg/blitzkitgo/server.go
+// File: pkg/blitzkit/server.go
 // Description: Définit la structure principale du serveur web (`Server`),
 //
 //	gère son initialisation, son démarrage, son arrêt propre,
 //	et l'enregistrement des éléments pour le préchauffage du cache.
-package blitzkitgo
+package blitzkit
 
 import (
 	"bytes"
@@ -41,11 +41,11 @@ type Server struct {
 	warmupMutex    sync.Mutex
 }
 
-// Init effectue une initialisation unique pour le package blitzkitgo.
+// Init effectue une initialisation unique pour le package blitzkit.
 // Actuellement, ne fait qu'enregistrer un message de débogage.
 func Init() {
 	initOnce.Do(func() {
-		slog.Debug("blitzkitgo package initialized (initOnce)")
+		slog.Debug("blitzkit package initialized (initOnce)")
 	})
 }
 
@@ -131,7 +131,7 @@ func NewServer(cfg Config) (*Server, error) {
 		cfg.BadgerGCDiscardRatio = 0.5
 	}
 
-	logger.Info("Effective blitzkitgo Core Config",
+	logger.Info("Effective blitzkit Core Config",
 		slog.String("Port", cfg.Port), slog.Duration("ReadTimeout", cfg.ReadTimeout), slog.Duration("WriteTimeout", cfg.WriteTimeout),
 		slog.Duration("IdleTimeout", cfg.IdleTimeout), slog.Bool("DevMode", cfg.DevMode),
 		slog.String("PublicDir", cfg.PublicDir), slog.String("CacheDir", cfg.CacheDir), slog.String("SourcesDir", cfg.SourcesDir), slog.String("StaticsDir", cfg.StaticsDir),
@@ -159,7 +159,7 @@ func NewServer(cfg Config) (*Server, error) {
 	}
 
 	if len(validationErrors) > 0 {
-		err := fmt.Errorf("blitzkitgo config validation failed: %s", strings.Join(validationErrors, "; "))
+		err := fmt.Errorf("blitzkit config validation failed: %s", strings.Join(validationErrors, "; "))
 		logger.Error("Configuration validation failed", "errors", validationErrors)
 		if cacheSystem != nil {
 			_ = cacheSystem.Close(logger)
@@ -208,7 +208,7 @@ func NewServer(cfg Config) (*Server, error) {
 	}
 	setupMonitoring(app, cfg, logger, l2db)
 
-	logger.Info("blitzkitgo instance created. Register warmup items via handlers/init.")
+	logger.Info("blitzkit instance created. Register warmup items via handlers/init.")
 	return s, nil
 }
 
