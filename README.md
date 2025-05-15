@@ -9,7 +9,7 @@
 
 **Go Version Required:** 1.21+ (primarily for `slog`)
 
-**Repository:** `github.com/remi-viau/blitzkit-go`
+**Repository:** `github.com/r-via/blitzkit-go`
 
 ## 1. Overview
 
