@@ -1,0 +1,2 @@
+# Convertit tous les fichiers texte pour n’utiliser que LF
+* text=auto eol=lf
