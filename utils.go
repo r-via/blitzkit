@@ -1,8 +1,4 @@
-// File: utils.go
-// Description: Fournit diverses fonctions utilitaires pour le package blitzkit,
-//
-//	telles que l'extraction d'IP client, la gestion des valeurs par défaut,
-//	la vérification de répertoires, et la détection des requêtes JSON.
+// Package blitzkit provides utility functions and core server components.
 package blitzkit
 
 import (
@@ -18,18 +14,8 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-// GetClientIP extrait l'adresse IP du client à partir des en-têtes de la requête.
-// Priorise l'en-tête `X-Forwarded-For` (en prenant la première IP de la liste si présente),
-// puis utilise l'adresse distante (`RemoteAddr`) du contexte Fiber comme repli.
-//
-// Args:
-//
-//	xForwardedFor (string): La valeur de l'en-tête `X-Forwarded-For`.
-//	remoteAddr (string): L'adresse distante provenant du contexte Fiber.
-//
-// Returns:
-//
-//	string: L'adresse IP extraite du client.
+// GetClientIP extracts the client's IP address from request headers.
+// It prioritizes X-Forwarded-For, then uses Fiber's RemoteAddr as a fallback.
 func GetClientIP(xForwardedFor, remoteAddr string) string {
 	if xForwardedFor != "" {
 		ips := strings.Split(xForwardedFor, ",")
@@ -45,17 +31,7 @@ func GetClientIP(xForwardedFor, remoteAddr string) string {
 	return remoteAddr
 }
 
-// defaultDuration retourne la `value` si elle est positive (> 0), sinon retourne `defaultValue`.
-// Utile pour définir des timeouts ou intervalles avec des valeurs par défaut saines.
-//
-// Args:
-//
-//	value (time.Duration): La valeur de durée potentielle.
-//	defaultValue (time.Duration): La valeur par défaut à utiliser si `value` n'est pas positive.
-//
-// Returns:
-//
-//	time.Duration: La durée effective.
+// defaultDuration returns value if it's positive, otherwise returns defaultValue.
 func defaultDuration(value, defaultValue time.Duration) time.Duration {
 	if value > 0 {
 		return value
@@ -63,16 +39,7 @@ func defaultDuration(value, defaultValue time.Duration) time.Duration {
 	return defaultValue
 }
 
-// defaultInt retourne la `value` si elle est différente de zéro, sinon retourne `defaultValue`.
-//
-// Args:
-//
-//	value (int): La valeur entière potentielle.
-//	defaultValue (int): La valeur par défaut à utiliser si `value` est zéro.
-//
-// Returns:
-//
-//	int: La valeur entière effective.
+// defaultInt returns value if it's non-zero, otherwise returns defaultValue.
 func defaultInt(value, defaultValue int) int {
 	if value != 0 {
 		return value
@@ -80,21 +47,10 @@ func defaultInt(value, defaultValue int) int {
 	return defaultValue
 }
 
-// parseDurationEnv tente de parser une durée à partir d'une variable d'environnement.
-// Si la variable d'environnement existe et est valide, sa valeur est utilisée.
-// Sinon, si `configValue` est positive, elle est utilisée.
-// Sinon, `defaultValue` est utilisée. Logue la source de la valeur utilisée.
-//
-// Args:
-//
-//	key (string): Le nom de la variable d'environnement.
-//	configValue (time.Duration): La valeur provenant potentiellement d'une structure de configuration.
-//	defaultValue (time.Duration): La valeur par défaut ultime.
-//	logger (*slog.Logger): Le logger pour enregistrer la source de la valeur.
-//
-// Returns:
-//
-//	time.Duration: La durée effective déterminée.
+// parseDurationEnv parses a duration from an environment variable.
+// If the environment variable is set and valid, its value is used.
+// Otherwise, if configValue is positive, it's used.
+// Otherwise, defaultValue is used. It logs the source of the determined value.
 func parseDurationEnv(key string, configValue time.Duration, defaultValue time.Duration, logger *slog.Logger) time.Duration {
 	log := logger
 	if log == nil {
@@ -118,18 +74,30 @@ func parseDurationEnv(key string, configValue time.Duration, defaultValue time.D
 	return defaultValue
 }
 
-// checkDirWritable vérifie si un répertoire donné existe et est accessible en écriture
-// en tentant de créer puis supprimer un fichier temporaire à l'intérieur.
-//
-// Args:
-//
-//	dir (string): Le chemin du répertoire à vérifier.
-//	logger (*slog.Logger): Le logger pour enregistrer les erreurs ou avertissements.
-//
-// Returns:
-//
-//	error: Une erreur si le chemin est invalide, n'est pas un répertoire,
-//	       n'est pas accessible en écriture, ou si une erreur système survient. Nil si le répertoire est accessible en écriture.
+// getEnvAsBool retrieves an environment variable and parses it as a boolean.
+// "true", "1", "yes", "on" (case-insensitive) are considered true.
+// "false", "0", "no", "off" (case-insensitive) are considered false.
+// If the environment variable is not set or is invalid, defaultValue is returned.
+func getEnvAsBool(logger *slog.Logger, key string, defaultValue bool) bool {
+	envStr := os.Getenv(key)
+	if envStr != "" {
+		valLower := strings.ToLower(envStr)
+		if valLower == "true" || valLower == "1" || valLower == "yes" || valLower == "on" {
+			logger.Debug("Using boolean from environment variable (true)", "var", key, "value_read", envStr)
+			return true
+		}
+		if valLower == "false" || valLower == "0" || valLower == "no" || valLower == "off" {
+			logger.Debug("Using boolean from environment variable (false)", "var", key, "value_read", envStr)
+			return false
+		}
+		logger.Warn("Invalid boolean format in environment variable, using default", "var", key, "value_read", envStr, "default_used", defaultValue)
+	}
+	logger.Debug("Using default boolean", "var", key, "value_used", defaultValue, "env_value_if_any", envStr)
+	return defaultValue
+}
+
+// checkDirWritable checks if a given directory path exists and is writable.
+// It attempts to create and then delete a temporary file within the directory.
 func checkDirWritable(dir string, logger *slog.Logger) error {
 	log := logger
 	if log == nil {
@@ -174,18 +142,9 @@ func checkDirWritable(dir string, logger *slog.Logger) error {
 	return nil
 }
 
-// ensureDirExists vérifie si un répertoire existe au chemin spécifié. S'il n'existe pas,
-// il tente de le créer (ainsi que tous les répertoires parents nécessaires).
-// Retourne une erreur si le chemin existe mais n'est pas un répertoire, ou si la création échoue.
-//
-// Args:
-//
-//	dir (string): Le chemin du répertoire à vérifier/créer.
-//	logger (*slog.Logger): Le logger pour enregistrer les actions ou erreurs.
-//
-// Returns:
-//
-//	error: Une erreur si le chemin est invalide, si ce n'est pas un répertoire, ou si la création échoue. Nil sinon.
+// ensureDirExists checks if a directory exists at the specified path.
+// If it doesn't exist, it attempts to create it, including any necessary parent directories.
+// It returns an error if the path exists but is not a directory, or if creation fails.
 func ensureDirExists(dir string, logger *slog.Logger) error {
 	log := logger
 	if log == nil {
@@ -216,15 +175,7 @@ func ensureDirExists(dir string, logger *slog.Logger) error {
 	return fmt.Errorf("failed to check directory %s: %w", dir, err)
 }
 
-// WantsJSON vérifie si l'en-tête `Accept` de la requête indique une préférence pour le format JSON.
-//
-// Args:
-//
-//	c (*fiber.Ctx): Le contexte Fiber de la requête.
-//
-// Returns:
-//
-//	bool: true si l'en-tête `Accept` contient "application/json", sinon false.
+// WantsJSON checks if the request's Accept header indicates a preference for JSON.
 func WantsJSON(c *fiber.Ctx) bool {
 	if c == nil {
 		slog.Default().Warn("WantsJSON called with nil context")
@@ -233,19 +184,8 @@ func WantsJSON(c *fiber.Ctx) bool {
 	return strings.Contains(strings.ToLower(c.Get(fiber.HeaderAccept)), fiber.MIMEApplicationJSON)
 }
 
-// getEnvOrDefault récupère une variable d'environnement, en utilisant une valeur de configuration
-// ou une valeur par défaut comme repli. Logue la source de la valeur utilisée.
-//
-// Args:
-//
-//	logger (*slog.Logger): Le logger pour enregistrer la source.
-//	key (string): Le nom de la variable d'environnement.
-//	configValue (string): La valeur provenant potentiellement d'une configuration.
-//	defaultValue (string): La valeur par défaut ultime.
-//
-// Returns:
-//
-//	string: La valeur effective déterminée.
+// getEnvOrDefault retrieves an environment variable, using a configuration value
+// or a default value as fallbacks. It logs the source of the determined value.
 func getEnvOrDefault(logger *slog.Logger, key, configValue, defaultValue string) string {
 	log := logger
 	if log == nil {

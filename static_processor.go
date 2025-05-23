@@ -1,17 +1,16 @@
-// File: static_processor.go
-// Description: Gère le traitement des fichiers statiques (CSS, JS) au démarrage du serveur.
-//
-//	Inclut la minification des fichiers sources et la copie des fichiers statiques
-//	vers le répertoire public.
+// Package blitzkit provides utility functions and core server components,
+// including static file processing capabilities.
 package blitzkit
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
 	"io/fs"
 	"log/slog"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -20,33 +19,35 @@ import (
 	"github.com/tdewolff/minify/v2/js"
 )
 
-// StaticProcessor gère la minification et la copie des ressources statiques.
-// Il lit depuis `sourcesDir` (pour minifier CSS/JS) et `staticsDir` (pour copier),
-// et écrit le résultat dans `publicDir`.
+// StaticProcessor handles minification and copying of static assets.
+// It reads from sourcesDir (for CSS/JS to minify) and staticsDir (to copy as-is),
+// and writes processed files to publicDir.
+// Minification behavior is controlled by MinifyCSS, MinifyJS, and UseEsbuildIfAvailable settings.
 type StaticProcessor struct {
-	sourcesDir string
-	staticsDir string
-	publicDir  string
-	logger     *slog.Logger
-	minifier   *minify.M
-	devMode    bool
+	sourcesDir            string
+	staticsDir            string
+	publicDir             string
+	logger                *slog.Logger
+	minifier              *minify.M // Internal Go-based minifier (tdewolff)
+	devMode               bool
+	minifyCSS             bool // From Config: whether to minify CSS
+	minifyJS              bool // From Config: whether to minify JS
+	useEsbuildIfAvailable bool // From Config: whether to attempt using esbuild for JS
+	esbuildPath           string
 }
 
-// NewStaticProcessor crée une nouvelle instance de StaticProcessor.
-// Initialise le minificateur pour CSS et JS.
-//
-// Args:
-//
-//	sourcesDir (string): Répertoire contenant les fichiers CSS/JS à minifier.
-//	staticsDir (string): Répertoire contenant les fichiers statiques à copier tels quels.
-//	publicDir (string): Répertoire de destination où les fichiers traités seront écrits.
-//	logger (*slog.Logger): Le logger structuré.
-//	devMode (bool): Indicateur du mode développement (peut affecter la minification ou la sélection de fichiers).
-//
-// Returns:
-//
-//	*StaticProcessor: Une nouvelle instance de StaticProcessor.
-func NewStaticProcessor(sourcesDir, staticsDir, publicDir string, logger *slog.Logger, devMode bool) *StaticProcessor {
+// NewStaticProcessor creates a new instance of StaticProcessor.
+// It initializes the internal minifier for CSS and JS (as a fallback)
+// and detects the presence of esbuild if configured for use.
+// Minification behavior is determined by the passed boolean flags.
+func NewStaticProcessor(
+	sourcesDir, staticsDir, publicDir string,
+	logger *slog.Logger,
+	devMode bool,
+	confMinifyCSS bool,
+	confMinifyJS bool,
+	confUseEsbuild bool,
+) *StaticProcessor {
 	if logger == nil {
 		logger = slog.Default()
 		logger.Warn("StaticProcessor using default logger.")
@@ -55,25 +56,44 @@ func NewStaticProcessor(sourcesDir, staticsDir, publicDir string, logger *slog.L
 	m.AddFunc("text/css", css.Minify)
 	m.AddFunc("application/javascript", js.Minify)
 
-	return &StaticProcessor{
-		sourcesDir: sourcesDir,
-		staticsDir: staticsDir,
-		publicDir:  publicDir,
-		logger:     logger,
-		minifier:   m,
-		devMode:    devMode,
+	sp := &StaticProcessor{
+		sourcesDir:            sourcesDir,
+		staticsDir:            staticsDir,
+		publicDir:             publicDir,
+		logger:                logger,
+		minifier:              m,
+		devMode:               devMode,
+		minifyCSS:             confMinifyCSS,
+		minifyJS:              confMinifyJS,
+		useEsbuildIfAvailable: confUseEsbuild,
 	}
+
+	if sp.useEsbuildIfAvailable && sp.minifyJS {
+		path, err := exec.LookPath("esbuild")
+		if err == nil && path != "" {
+			sp.esbuildPath = path
+			logger.Info("esbuild detected and configured for use with JS minification.", "path", path)
+		} else {
+			logger.Info("esbuild not found in PATH or not configured for use. Internal Go-based minifier will be used for JavaScript if minification is enabled.")
+			sp.useEsbuildIfAvailable = false // Ensure it's false if not found or not configured
+		}
+	} else if sp.minifyJS {
+		logger.Info("Internal Go-based minifier will be used for JavaScript if minification is enabled (esbuild usage not configured or JS minification disabled).")
+	} else {
+		logger.Info("JavaScript minification is disabled via configuration.")
+	}
+	if !sp.minifyCSS {
+		logger.Info("CSS minification is disabled via configuration.")
+	}
+
+	return sp
 }
 
-// Process exécute le pipeline complet de traitement des ressources statiques :
-// 1. Purge (supprime et recrée) le répertoire public de destination.
-// 2. Minifie les fichiers CSS et JS trouvés dans le répertoire source.
-// 3. Copie tous les fichiers et répertoires du répertoire statique.
-// Retourne une erreur agrégée si des étapes échouent.
-//
-// Returns:
-//
-//	error: Une erreur si la purge, la minification ou la copie échoue, sinon nil.
+// Process executes the static asset processing pipeline:
+// 1. Purges (deletes and recreates) the public destination directory.
+// 2. Minifies CSS and JS files found in the sources directory, based on configuration.
+// 3. Copies all files and directories from the statics directory.
+// It returns an aggregated error if any steps fail.
 func (sp *StaticProcessor) Process() error {
 	logCtx := sp.logger.With(
 		slog.String("sources_dir", sp.sourcesDir),
@@ -96,11 +116,11 @@ func (sp *StaticProcessor) Process() error {
 
 	if sp.sourcesDir != "" {
 		if err := sp.minifyFiles(); err != nil {
-			logCtx.Error("Error during source file minification", "error", err)
-			processErrors = append(processErrors, fmt.Sprintf("minify failed: %v", err))
+			logCtx.Error("Error during source file processing (minification/copy)", "error", err)
+			processErrors = append(processErrors, fmt.Sprintf("source processing failed: %v", err))
 		}
 	} else {
-		logCtx.Info("SourcesDir not configured, skipping minification.")
+		logCtx.Info("SourcesDir not configured, skipping source file processing.")
 	}
 
 	if sp.staticsDir != "" {
@@ -121,12 +141,8 @@ func (sp *StaticProcessor) Process() error {
 	return nil
 }
 
-// purgePublicDir supprime le contenu existant du répertoire public et le recrée.
-// Contient des sécurités pour éviter de supprimer des chemins invalides (ex: "/", ".").
-//
-// Returns:
-//
-//	error: Une erreur si le chemin est invalide, si la suppression ou la recréation échoue.
+// purgePublicDir deletes the existing content of the public directory and recreates it.
+// It includes safeguards to prevent deleting invalid paths (e.g., "/", ".").
 func (sp *StaticProcessor) purgePublicDir() error {
 	logCtx := sp.logger.With(slog.String("public_dir", sp.publicDir))
 	logCtx.Debug("Purging public directory...")
@@ -156,36 +172,38 @@ func (sp *StaticProcessor) purgePublicDir() error {
 	return nil
 }
 
-// minifyFiles parcourt le répertoire `sourcesDir`, identifie les fichiers CSS et JS
-// (en gérant la priorité des fichiers `.debug.js` en mode dev), les minifie
-// (sauf si désactivé pour JS en mode dev), et écrit le résultat dans le `publicDir`
-// en conservant la structure de sous-répertoires relative.
-//
-// Returns:
-//
-//	error: Une erreur si le parcours du répertoire ou une opération de fichier/minification échoue.
+// minifyFiles walks the sourcesDir, processes .css and .js files based on
+// the MinifyCSS, MinifyJS, and UseEsbuildIfAvailable configuration.
+// If minification is disabled for a type, files are copied as-is.
+// Esbuild is preferred for JS minification if enabled and available; otherwise,
+// an internal Go minifier is used as a fallback or primary if esbuild is not used.
+// Output files maintain their relative subdirectory structure within publicDir.
 func (sp *StaticProcessor) minifyFiles() error {
-	logCtx := sp.logger.With(slog.String("sources_dir", sp.sourcesDir), slog.String("public_dir", sp.publicDir))
-	logCtx.Info("Minifying source assets (CSS/JS)...")
+	logCtx := sp.logger.With(
+		slog.String("sources_dir", sp.sourcesDir),
+		slog.String("public_dir", sp.publicDir),
+		slog.Bool("minify_css", sp.minifyCSS),
+		slog.Bool("minify_js", sp.minifyJS),
+		slog.Bool("use_esbuild", sp.useEsbuildIfAvailable && sp.esbuildPath != ""),
+	)
+	logCtx.Info("Processing source assets from SourcesDir...")
 
 	dirInfo, err := os.Stat(sp.sourcesDir)
 	if os.IsNotExist(err) {
-		logCtx.Info("Source directory does not exist, skipping minification.")
+		logCtx.Info("Source directory does not exist, skipping processing.")
 		return nil
 	}
 	if err != nil {
-		return fmt.Errorf("failed stat %s: %w", sp.sourcesDir, err)
+		return fmt.Errorf("failed to stat sources directory %s: %w", sp.sourcesDir, err)
 	}
 	if !dirInfo.IsDir() {
-		return fmt.Errorf("%s is not a directory", sp.sourcesDir)
+		return fmt.Errorf("sources path %s is not a directory", sp.sourcesDir)
 	}
 
 	filesProcessed := 0
-	filesToProcess := make(map[string]string)
-
 	err = filepath.WalkDir(sp.sourcesDir, func(srcPath string, d fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
-			logCtx.Error("Walk error", "path", srcPath, "error", walkErr)
+			logCtx.Error("Error during directory walk", "path", srcPath, "error", walkErr)
 			return walkErr
 		}
 		if d.IsDir() {
@@ -194,107 +212,104 @@ func (sp *StaticProcessor) minifyFiles() error {
 
 		fileName := d.Name()
 		isCSS := strings.HasSuffix(fileName, ".css")
-		isDebugJS := strings.HasSuffix(fileName, ".debug.js")
-		isStandardJS := strings.HasSuffix(fileName, ".js") && !isDebugJS
+		isJS := strings.HasSuffix(fileName, ".js")
 
-		if !isCSS && !isDebugJS && !isStandardJS {
-			return nil
-		}
-
-		baseFileName := fileName
-		if isDebugJS {
-			baseFileName = strings.TrimSuffix(fileName, ".debug.js") + ".js"
+		if !isCSS && !isJS {
+			return nil // Process only .css and .js files
 		}
 
 		relSrcPath, errRel := filepath.Rel(sp.sourcesDir, srcPath)
 		if errRel != nil {
-			logCtx.Error("Failed get relative path", "file", srcPath, "error", errRel)
+			logCtx.Error("Failed to get relative path", "source_file", srcPath, "error", errRel)
 			return nil
 		}
-
-		destRelPath := filepath.ToSlash(filepath.Join(filepath.Dir(relSrcPath), baseFileName))
+		destRelPath := filepath.ToSlash(relSrcPath)
 		destPath := filepath.Join(sp.publicDir, destRelPath)
-
-		currentSrc, exists := filesToProcess[destPath]
-		shouldReplace := !exists
-		if exists {
-			currentIsDebug := strings.HasSuffix(currentSrc, ".debug.js")
-			newIsDebug := isDebugJS
-			if sp.devMode && newIsDebug && !currentIsDebug {
-				shouldReplace = true
-			}
-			if !sp.devMode && !newIsDebug && currentIsDebug {
-				shouldReplace = true
-			}
-		}
-
-		if shouldReplace {
-			if sp.devMode && exists {
-				logCtx.Debug("Replacing file candidate for DevMode", "destination", destPath, "old_source", currentSrc, "new_source", srcPath)
-			}
-			if !sp.devMode && exists {
-				logCtx.Debug("Replacing file candidate for ProdMode", "destination", destPath, "old_source", currentSrc, "new_source", srcPath)
-			}
-			filesToProcess[destPath] = srcPath
-		}
-		return nil
-	})
-	if err != nil {
-		return fmt.Errorf("failed scanning %s for minification: %w", sp.sourcesDir, err)
-	}
-
-	logCtx.Debug("Processing selected files for minification", "count", len(filesToProcess))
-	for destPath, srcPath := range filesToProcess {
 		fileLogCtx := logCtx.With(slog.String("source", srcPath), slog.String("destination", destPath))
-		if sp.devMode {
-			fileLogCtx.Debug("Processing file")
-		}
 
 		destSubDir := filepath.Dir(destPath)
 		if err := os.MkdirAll(destSubDir, 0755); err != nil {
-			fileLogCtx.Error("Failed create destination subdir", "path", destSubDir, "error", err)
-			continue
+			fileLogCtx.Error("Failed to create destination subdirectory", "path", destSubDir, "error", err)
+			return nil
 		}
 
 		srcContent, errRead := os.ReadFile(srcPath)
 		if errRead != nil {
-			fileLogCtx.Error("Failed read source file", "error", errRead)
-			continue
+			fileLogCtx.Error("Failed to read source file", "error", errRead)
+			return nil
 		}
 
-		var mediaType string
-		if strings.HasSuffix(srcPath, ".css") {
-			mediaType = "text/css"
-		} else {
-			mediaType = "application/javascript"
+		outputContent := srcContent // Default to original content (copy)
+		var opErr error
+		esbuildProcessedFile := false
+
+		if isCSS {
+			if sp.minifyCSS {
+				fileLogCtx.Debug("Minifying CSS with internal Go minifier...")
+				outputContent, opErr = sp.minifier.Bytes("text/css", srcContent)
+				if opErr != nil {
+					fileLogCtx.Error("CSS minification failed, using original content", "error", opErr)
+					outputContent = srcContent
+				}
+			} else {
+				fileLogCtx.Debug("CSS minification disabled, copying as is.")
+			}
+		} else if isJS {
+			if sp.minifyJS {
+				if sp.useEsbuildIfAvailable && sp.esbuildPath != "" {
+					fileLogCtx.Debug("Attempting JS minification with esbuild...")
+					cmd := exec.Command(sp.esbuildPath, srcPath, "--minify", "--outfile="+destPath)
+					var stderrBuf bytes.Buffer
+					cmd.Stderr = &stderrBuf
+					if errCmd := cmd.Run(); errCmd != nil {
+						opErr = fmt.Errorf("esbuild failed: %v, stderr: %s", errCmd, stderrBuf.String())
+						fileLogCtx.Error("esbuild minification failed, attempting fallback to internal Go minifier", "error", opErr)
+
+						outputContent, opErr = sp.minifier.Bytes("application/javascript", srcContent)
+						if opErr != nil {
+							fileLogCtx.Error("Fallback JS (internal Go) minification failed, using original content", "error", opErr)
+							outputContent = srcContent
+						}
+					} else {
+						esbuildProcessedFile = true
+						fileLogCtx.Debug("JS minified successfully with esbuild and written to output.")
+					}
+				} else {
+					fileLogCtx.Debug("Minifying JS with internal Go minifier (esbuild not used or not available).")
+					outputContent, opErr = sp.minifier.Bytes("application/javascript", srcContent)
+					if opErr != nil {
+						fileLogCtx.Error("Internal JS minification failed, using original content", "error", opErr)
+						outputContent = srcContent
+					}
+				}
+			} else {
+				fileLogCtx.Debug("JS minification disabled, copying as is.")
+			}
 		}
 
-		minifiedContent, minifyErr := sp.minifier.Bytes(mediaType, srcContent)
-		if minifyErr != nil {
-			fileLogCtx.Error("Minification failed, using original content", "error", minifyErr)
-			minifiedContent = srcContent
-		}
-
-		if errWrite := os.WriteFile(destPath, minifiedContent, 0644); errWrite != nil {
-			fileLogCtx.Error("Failed write destination file", "error", errWrite)
-			continue
+		if !esbuildProcessedFile {
+			if errWrite := os.WriteFile(destPath, outputContent, 0644); errWrite != nil {
+				fileLogCtx.Error("Failed to write destination file", "error", errWrite)
+				return nil
+			}
 		}
 		filesProcessed++
+		return nil
+	})
+
+	if err != nil {
+		return fmt.Errorf("error walking sources directory %s: %w", sp.sourcesDir, err)
 	}
 
-	logCtx.Info("Source asset minification completed", "files_processed", filesProcessed)
+	logCtx.Info("Source asset processing completed.", "files_processed", filesProcessed)
 	return nil
 }
 
-// copyFiles parcourt le répertoire `staticsDir` et copie récursivement tous
-// les fichiers et sous-répertoires vers le `publicDir`, en préservant la structure.
-//
-// Returns:
-//
-//	error: Une erreur si le parcours ou une opération de copie/création de répertoire échoue.
+// copyFiles walks the staticsDir and recursively copies all files and subdirectories
+// to the publicDir, preserving the structure.
 func (sp *StaticProcessor) copyFiles() error {
 	logCtx := sp.logger.With(slog.String("statics_dir", sp.staticsDir), slog.String("public_dir", sp.publicDir))
-	logCtx.Info("Copying static assets...")
+	logCtx.Info("Copying static assets from StaticsDir...")
 
 	dirInfo, err := os.Stat(sp.staticsDir)
 	if os.IsNotExist(err) {
@@ -302,10 +317,10 @@ func (sp *StaticProcessor) copyFiles() error {
 		return nil
 	}
 	if err != nil {
-		return fmt.Errorf("failed stat %s: %w", sp.staticsDir, err)
+		return fmt.Errorf("failed to stat statics directory %s: %w", sp.staticsDir, err)
 	}
 	if !dirInfo.IsDir() {
-		return fmt.Errorf("%s is not a directory", sp.staticsDir)
+		return fmt.Errorf("statics path %s is not a directory", sp.staticsDir)
 	}
 
 	filesCopiedCount := 0
@@ -313,7 +328,7 @@ func (sp *StaticProcessor) copyFiles() error {
 
 	err = filepath.WalkDir(sp.staticsDir, func(srcPath string, d fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
-			logCtx.Error("Walk error during copy", "path", srcPath, "error", walkErr)
+			logCtx.Error("Error during statics directory walk", "path", srcPath, "error", walkErr)
 			return walkErr
 		}
 		if srcPath == sp.staticsDir {
@@ -322,7 +337,7 @@ func (sp *StaticProcessor) copyFiles() error {
 
 		relPath, errRel := filepath.Rel(sp.staticsDir, srcPath)
 		if errRel != nil {
-			logCtx.Error("Failed get relative path during copy", "path", srcPath, "error", errRel)
+			logCtx.Error("Failed to get relative path during copy", "source_file", srcPath, "error", errRel)
 			return nil
 		}
 
@@ -330,14 +345,13 @@ func (sp *StaticProcessor) copyFiles() error {
 
 		if d.IsDir() {
 			if errMkdir := os.MkdirAll(destPath, 0755); errMkdir != nil {
-				logCtx.Error("Failed create destination directory during copy", "path", destPath, "error", errMkdir)
+				logCtx.Error("Failed to create destination directory during copy", "path", destPath, "error", errMkdir)
 				return errMkdir
 			}
 			dirsCreatedCount++
 			if sp.devMode {
 				logCtx.Debug("Created directory", "destination", destPath)
 			}
-			return nil
 		} else {
 			errCopy := copyFile(srcPath, destPath)
 			if errCopy != nil {
@@ -348,45 +362,34 @@ func (sp *StaticProcessor) copyFiles() error {
 			if sp.devMode {
 				logCtx.Debug("Copied file", "source", srcPath, "destination", destPath)
 			}
-			return nil
 		}
+		return nil
 	})
 
 	if err != nil {
-		return fmt.Errorf("failed during walk for copy from %s: %w", sp.staticsDir, err)
+		return fmt.Errorf("error walking statics directory %s for copy: %w", sp.staticsDir, err)
 	}
-	logCtx.Info("Static file copy process completed", "files_copied", filesCopiedCount, "directories_created", dirsCreatedCount)
+	logCtx.Info("Static file copy process completed.", "files_copied", filesCopiedCount, "directories_created", dirsCreatedCount)
 	return nil
 }
 
-// copyFile copie le contenu d'un fichier source vers un fichier destination.
-// Crée ou écrase le fichier destination.
-//
-// Args:
-//
-//	src (string): Chemin du fichier source.
-//	dst (string): Chemin du fichier destination.
-//
-// Returns:
-//
-//	error: Une erreur si l'ouverture, la création ou la copie échoue.
+// copyFile copies the content of a source file to a destination file.
+// It creates or overwrites the destination file.
 func copyFile(src, dst string) error {
 	srcFile, err := os.Open(src)
 	if err != nil {
-		return fmt.Errorf("open source %s: %w", src, err)
+		return fmt.Errorf("failed to open source file %s: %w", src, err)
 	}
 	defer srcFile.Close()
 
 	dstFile, err := os.Create(dst)
 	if err != nil {
-		return fmt.Errorf("create destination %s: %w", dst, err)
+		return fmt.Errorf("failed to create destination file %s: %w", dst, err)
 	}
 	defer dstFile.Close()
 
-	_, err = io.Copy(dstFile, srcFile)
-	if err != nil {
-		return fmt.Errorf("copy %s to %s: %w", src, dst, err)
+	if _, err = io.Copy(dstFile, srcFile); err != nil {
+		return fmt.Errorf("failed to copy from %s to %s: %w", src, dst, err)
 	}
-
 	return nil
 }

@@ -1,8 +1,4 @@
-// File: server.go
-// Description: Définit la structure principale du serveur web (`Server`),
-//
-//	gère son initialisation, son démarrage, son arrêt propre,
-//	et l'enregistrement des éléments pour le préchauffage du cache.
+// Package blitzkit provides a core server toolkit for building web applications with Go and Fiber.
 package blitzkit
 
 import (
@@ -24,14 +20,10 @@ import (
 	cache "github.com/patrickmn/go-cache"
 )
 
-// HeaderCacheStatus est le nom de l'en-tête HTTP utilisé pour indiquer le statut du cache (HIT/MISS).
-const HeaderCacheStatus = "X-Cache-Status"
-
-// initOnce garantit que l'initialisation globale (si nécessaire) ne se produit qu'une seule fois.
 var initOnce sync.Once
 
-// Server encapsule l'application Fiber, la configuration, le logger, le système de cache,
-// et le registre pour le préchauffage du cache.
+// Server encapsulates the Fiber application, configuration, logger, cache system,
+// and cache warmup registry.
 type Server struct {
 	app            *fiber.App
 	config         Config
@@ -41,27 +33,20 @@ type Server struct {
 	warmupMutex    sync.Mutex
 }
 
-// Init effectue une initialisation unique pour le package blitzkit.
-// Actuellement, ne fait qu'enregistrer un message de débogage.
+// Init performs one-time initialization for the blitzkit package.
 func Init() {
 	initOnce.Do(func() {
 		slog.Debug("blitzkit package initialized (initOnce)")
 	})
 }
 
-// NewServer crée et configure une nouvelle instance du serveur web.
-// Valide la configuration fournie, initialise le logger (si non fourni),
-// initialise le système de cache (L1/L2), crée l'instance Fiber,
-// traite les fichiers statiques (si configuré), met en place les middlewares de base,
-// et configure la surveillance (métriques, health check).
-//
-// Args:
-//
-//	cfg (Config): La configuration du serveur.
-//
-// Returns:
-//
-//	(*Server, error): Une nouvelle instance du serveur et une erreur nil, ou nil et une erreur en cas d'échec de validation ou d'initialisation.
+// NewServer creates and configures a new web server instance.
+// It validates the provided configuration, initializes the logger (if not provided),
+// sets up the L1/L2 cache system, creates the Fiber app instance, processes static files,
+// applies base middlewares, and configures monitoring (metrics, health check).
+// The behavior of static file minification (CSS, JS) and esbuild usage is determined by
+// the Config.MinifyCSS, Config.MinifyJS, and Config.UseEsbuildIfAvailable fields, which
+// can be influenced by environment variables (CSS_MINIFY, JS_MINIFY, USE_ESBUILD_IF_AVAILABLE).
 func NewServer(cfg Config) (*Server, error) {
 	Init()
 	var validationErrors []string
@@ -77,6 +62,11 @@ func NewServer(cfg Config) (*Server, error) {
 		logger.Info("No logger provided, created default slog logger", "level", logLevel.String(), "dev_mode", cfg.DevMode)
 	}
 	cfg.Logger = logger
+
+	cfg.MinifyCSS = getEnvAsBool(logger, "CSS_MINIFY", !cfg.DevMode)
+	cfg.MinifyJS = getEnvAsBool(logger, "JS_MINIFY", !cfg.DevMode)
+	cfg.UseEsbuildIfAvailable = getEnvAsBool(logger, "USE_ESBUILD_IF_AVAILABLE", !cfg.DevMode)
+	cfg.AppName = getEnvOrDefault(logger, "APP_NAME", cfg.AppName, "BlitzKitApp") // AJOUTÉ: Initialisation de AppName
 
 	if cfg.PublicDir != "" {
 		abs, err := filepath.Abs(cfg.PublicDir)
@@ -132,8 +122,10 @@ func NewServer(cfg Config) (*Server, error) {
 	}
 
 	logger.Info("Effective blitzkit Core Config",
+		slog.String("AppName", cfg.AppName), // AJOUTÉ: Log de AppName
 		slog.String("Port", cfg.Port), slog.Duration("ReadTimeout", cfg.ReadTimeout), slog.Duration("WriteTimeout", cfg.WriteTimeout),
 		slog.Duration("IdleTimeout", cfg.IdleTimeout), slog.Bool("DevMode", cfg.DevMode),
+		slog.Bool("MinifyCSS", cfg.MinifyCSS), slog.Bool("MinifyJS", cfg.MinifyJS), slog.Bool("UseEsbuildIfAvailable", cfg.UseEsbuildIfAvailable),
 		slog.String("PublicDir", cfg.PublicDir), slog.String("CacheDir", cfg.CacheDir), slog.String("SourcesDir", cfg.SourcesDir), slog.String("StaticsDir", cfg.StaticsDir),
 		slog.Duration("CacheL1TTL", cfg.CacheL1DefaultTTL), slog.Duration("CacheL2TTL", cfg.CacheL2DefaultTTL),
 		slog.Duration("BadgerGCInterval", cfg.BadgerGCInterval), slog.Float64("BadgerGCDiscardRatio", cfg.BadgerGCDiscardRatio),
@@ -185,14 +177,15 @@ func NewServer(cfg Config) (*Server, error) {
 		IdleTimeout:           cfg.IdleTimeout,
 		ErrorHandler:          errorHandler,
 		DisableStartupMessage: true,
-		AppName:               "GoReviewApp v1.1",
+		AppName:               cfg.AppName, // CORRIGÉ: Utilise cfg.AppName initialisé
 		Prefork:               !cfg.DevMode,
 	}
 	app := fiber.New(fiberConfig)
 	s.app = app
 
 	if cfg.PublicDir != "" && (cfg.SourcesDir != "" || cfg.StaticsDir != "") {
-		processor := NewStaticProcessor(cfg.SourcesDir, cfg.StaticsDir, cfg.PublicDir, logger, cfg.DevMode)
+		processor := NewStaticProcessor(cfg.SourcesDir, cfg.StaticsDir, cfg.PublicDir, logger,
+			cfg.DevMode, cfg.MinifyCSS, cfg.MinifyJS, cfg.UseEsbuildIfAvailable)
 		if err := processor.Process(); err != nil {
 			logger.Error("Failed to process static files on startup, check permissions and paths", "error", err)
 		}
@@ -212,12 +205,9 @@ func NewServer(cfg Config) (*Server, error) {
 	return s, nil
 }
 
-// App retourne l'instance sous-jacente de l'application Fiber.
-// Panic si l'instance Fiber n'a pas été initialisée.
-//
-// Returns:
-//
-//	*fiber.App: L'instance de l'application Fiber.
+// ... (le reste de server.go reste inchangé : App, GetLogger, GetConfig, Start, Shutdown, RegisterForWarmup, ExecuteWarmup) ...
+// App returns the underlying Fiber application instance.
+// It panics if the Fiber instance has not been initialized.
 func (s *Server) App() *fiber.App {
 	if s.app == nil {
 		panic("Server.App() called on a nil Fiber instance")
@@ -225,31 +215,19 @@ func (s *Server) App() *fiber.App {
 	return s.app
 }
 
-// GetLogger retourne l'instance du logger slog configurée pour ce serveur.
-//
-// Returns:
-//
-//	*slog.Logger: Le logger configuré.
+// GetLogger returns the slog.Logger instance configured for this server.
 func (s *Server) GetLogger() *slog.Logger {
 	return s.logger
 }
 
-// GetConfig retourne une copie de la configuration effective du serveur.
-//
-// Returns:
-//
-//	Config: La configuration actuelle du serveur.
+// GetConfig returns a copy of the server's effective configuration.
 func (s *Server) GetConfig() Config {
 	return s.config
 }
 
-// Start démarre le serveur web Fiber et le fait écouter sur le port configuré.
-// Bloque jusqu'à ce que le serveur soit arrêté (par Shutdown ou une erreur fatale).
-// Gère l'affichage des messages de démarrage en fonction du mode (Dev/Prod, Master/Child).
-//
-// Returns:
-//
-//	error: Une erreur si l'écoute échoue (autre que `http.ErrServerClosed`), sinon nil après un arrêt propre.
+// Start starts the Fiber web server, listening on the configured port.
+// It blocks until the server is shut down (either by Shutdown or a fatal error).
+// Startup messages are logged based on development/production mode and master/child process status.
 func (s *Server) Start() error {
 	port := s.config.Port
 	if port == "" {
@@ -264,6 +242,7 @@ func (s *Server) Start() error {
 	}
 
 	if !s.config.DevMode && fiber.IsChild() {
+		// Child processes in prefork mode should not log the main startup message.
 	} else {
 		s.logger.Info("Server starting listener...", "address", addr, "dev_mode", s.config.DevMode, "prefork", preforkStatus)
 	}
@@ -280,14 +259,10 @@ func (s *Server) Start() error {
 	return nil
 }
 
-// Shutdown tente d'arrêter proprement le serveur web et de fermer le système de cache.
-// Utilise `ShutdownWithTimeout` pour l'application Fiber et appelle `Cache.Close()`.
-// Logue le processus et retourne la première erreur rencontrée.
-// Gère le cas des processus enfants en mode prefork (qui n'exécutent pas l'arrêt complet).
-//
-// Returns:
-//
-//	error: La première erreur rencontrée lors de l'arrêt de Fiber ou du cache, ou nil si tout s'est bien passé.
+// Shutdown attempts to gracefully shut down the web server and close the cache system.
+// It uses Fiber's ShutdownWithTimeout and calls Cache.Close().
+// It logs the process and returns the first error encountered.
+// Child processes in prefork mode do not execute the full shutdown.
 func (s *Server) Shutdown() error {
 	if !s.config.DevMode && fiber.IsChild() {
 		s.logger.Debug("Prefork child process shutting down", "pid", os.Getpid())
@@ -357,15 +332,8 @@ func (s *Server) Shutdown() error {
 	return firstErr
 }
 
-// RegisterForPageWarmup enregistre une fonction de génération de page HTML (Templ)
-// pour le processus de préchauffage du cache.
-// Le générateur doit retourner un `templ.Component` et un timestamp `lastModified`.
-//
-// Args:
-//
-//	key (string): La clé de cache unique pour cette page.
-//	ttlInfo (CacheTTLInfo): Les informations sur la durée de vie du cache.
-//	generator (PageGeneratorFunc): La fonction qui génère le contenu de la page.
+// RegisterForPageWarmup registers a PageGeneratorFunc for the cache warmup process.
+// The generator should return a templ.Component and a lastModified Unix timestamp.
 func (s *Server) RegisterForPageWarmup(key string, ttlInfo CacheTTLInfo, generator PageGeneratorFunc) {
 	s.warmupMutex.Lock()
 	defer s.warmupMutex.Unlock()
@@ -382,15 +350,8 @@ func (s *Server) RegisterForPageWarmup(key string, ttlInfo CacheTTLInfo, generat
 	})
 }
 
-// RegisterForBytesWarmup enregistre une fonction de génération de données binaires
-// pour le processus de préchauffage du cache.
-// Le générateur doit retourner une slice de bytes (`[]byte`) et un timestamp `lastModified`.
-//
-// Args:
-//
-//	key (string): La clé de cache unique pour ces données.
-//	ttlInfo (CacheTTLInfo): Les informations sur la durée de vie du cache.
-//	generator (BytesGeneratorFunc): La fonction qui génère les données binaires.
+// RegisterForBytesWarmup registers a BytesGeneratorFunc for the cache warmup process.
+// The generator should return a byte slice and a lastModified Unix timestamp.
 func (s *Server) RegisterForBytesWarmup(key string, ttlInfo CacheTTLInfo, generator BytesGeneratorFunc) {
 	s.warmupMutex.Lock()
 	defer s.warmupMutex.Unlock()
@@ -407,15 +368,10 @@ func (s *Server) RegisterForBytesWarmup(key string, ttlInfo CacheTTLInfo, genera
 	})
 }
 
-// ExecuteWarmup exécute le processus de préchauffage du cache pour tous les éléments enregistrés.
-// Il génère le contenu pour chaque clé enregistrée (si elle n'est pas déjà dans L1) en utilisant
-// la fonction de génération fournie, puis stocke le résultat dans les caches L1 et L2.
-// Utilise des goroutines et un sémaphore pour contrôler la concurrence selon `WarmupConcurrency`.
-// Logue le processus et retourne une erreur agrégée si des erreurs surviennent.
-//
-// Returns:
-//
-//	error: Une erreur agrégée contenant les erreurs de tous les éléments qui ont échoué, ou nil si tout réussit.
+// ExecuteWarmup runs the cache warmup process for all registered items.
+// It generates content for each item (if not already in L1 cache) and stores it in L1 and L2 caches.
+// Concurrency is controlled by Config.WarmupConcurrency.
+// It returns an aggregated error if any items fail.
 func (s *Server) ExecuteWarmup() error {
 	s.warmupMutex.Lock()
 	itemsToWarmup := make([]WarmupRegistration, len(s.warmupRegistry))
